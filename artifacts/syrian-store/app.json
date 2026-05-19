@@ -1,11 +1,12 @@
 {
   "expo": {
     "name": "السوري معك",
-    "slug": "syrian-store",
+    "slug": "alsouri-maak-mobile",
+    "owner": "blak11",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "syrian-store",
+    "scheme": "alsouri-maak-mobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
