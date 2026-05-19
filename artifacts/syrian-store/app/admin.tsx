@@ -575,13 +575,23 @@ export default function AdminScreen() {
           </TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
-          {(["overview", "users", "notifications", "lessons", "tools", "services", "banners", "recharge"] as TabKey[]).map((t) => (
-            <TouchableOpacity key={t} style={[styles.tabBtn, tab === t && { backgroundColor: colors.primary }]} onPress={() => setTab(t)} activeOpacity={0.8}>
-              <Text style={[styles.tabBtnText, { color: tab === t ? "#0f1624" : colors.mutedForeground }]}>
-                {t === "overview" ? "نظرة عامة" : t === "users" ? "المستخدمون" : t === "notifications" ? "الإشعارات" : t === "lessons" ? "الدروس" : t === "tools" ? "الأدوات" : t === "services" ? "الخدمات" : t === "banners" ? "البنرات" : "شحن الرصيد"}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {(["overview", "users", "notifications", "lessons", "tools", "services", "banners", "recharge"] as TabKey[]).map((t) => {
+            const pendingRecharge = t === "recharge" ? rechargeRequests.filter(r => r.status === "pending").length : 0;
+            return (
+              <TouchableOpacity key={t} style={[styles.tabBtn, tab === t && { backgroundColor: colors.primary }]} onPress={() => { setTab(t); if (t === "recharge") fetchRechargeRequests(); }} activeOpacity={0.8}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                  <Text style={[styles.tabBtnText, { color: tab === t ? "#0f1624" : colors.mutedForeground }]}>
+                    {t === "overview" ? "نظرة عامة" : t === "users" ? "المستخدمون" : t === "notifications" ? "الإشعارات" : t === "lessons" ? "الدروس" : t === "tools" ? "الأدوات" : t === "services" ? "الخدمات" : t === "banners" ? "البنرات" : "شحن الرصيد"}
+                  </Text>
+                  {pendingRecharge > 0 && (
+                    <View style={{ backgroundColor: "#ef4444", borderRadius: 8, minWidth: 16, height: 16, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 }}>
+                      <Text style={{ color: "#fff", fontSize: 10, fontFamily: "Cairo_700Bold" }}>{pendingRecharge}</Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </View>
 
@@ -591,11 +601,33 @@ export default function AdminScreen() {
         {tab === "overview" && (
           <View style={{ gap: 12 }}>
             <View style={styles.grid2}>
-              <StatCard icon="users" label="المستخدمون" value={stats?.totalUsers} color="#60a5fa" />
-              <StatCard icon="book-open" label="الدروس" value={stats?.totalLessons} color="#34d399" />
-              <StatCard icon="tool" label="الأدوات" value={stats?.totalTools} color="#a78bfa" />
-              <StatCard icon="briefcase" label="الخدمات" value={stats?.totalServices} color={colors.primary} />
+              <TouchableOpacity onPress={() => setTab("users")} activeOpacity={0.8}>
+                <StatCard icon="users" label="المستخدمون" value={stats?.totalUsers} color="#60a5fa" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setTab("lessons")} activeOpacity={0.8}>
+                <StatCard icon="book-open" label="الدروس" value={stats?.totalLessons} color="#34d399" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setTab("tools")} activeOpacity={0.8}>
+                <StatCard icon="tool" label="الأدوات" value={stats?.totalTools} color="#a78bfa" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setTab("services")} activeOpacity={0.8}>
+                <StatCard icon="briefcase" label="الخدمات" value={stats?.totalServices} color={colors.primary} />
+              </TouchableOpacity>
             </View>
+
+            {/* Quick action buttons */}
+            <TouchableOpacity onPress={() => setTab("users")} style={[styles.actionCard, { backgroundColor: "#60a5fa18", borderColor: "#60a5fa44" }]} activeOpacity={0.8}>
+              <Feather name="users" size={20} color="#60a5fa" />
+              <Text style={[styles.actionCardText, { color: "#60a5fa" }]}>عرض المستخدمين وإدارتهم</Text>
+              <Feather name="chevron-left" size={18} color="#60a5fa88" />
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => { setTab("recharge"); fetchRechargeRequests(); }} style={[styles.actionCard, { backgroundColor: "#d4a01718", borderColor: "#d4a01744" }]} activeOpacity={0.8}>
+              <Feather name="dollar-sign" size={20} color="#d4a017" />
+              <Text style={[styles.actionCardText, { color: "#d4a017" }]}>طلبات شحن الرصيد</Text>
+              <Feather name="chevron-left" size={18} color="#d4a01788" />
+            </TouchableOpacity>
+
             <TouchableOpacity onPress={() => openNotify()} style={[styles.actionCard, { backgroundColor: "#3b82f622", borderColor: "#3b82f644" }]} activeOpacity={0.8}>
               <Feather name="bell" size={20} color="#60a5fa" />
               <Text style={[styles.actionCardText, { color: "#60a5fa" }]}>إرسال إشعار لجميع المستخدمين</Text>
