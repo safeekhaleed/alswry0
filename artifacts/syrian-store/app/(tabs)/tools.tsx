@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
+import { GoldenFrame } from "@/components/GoldenFrame";
 
 type Tool = {
   id: number;
@@ -67,13 +68,14 @@ function ToolCard({ tool }: { tool: Tool }) {
   };
 
   return (
-    <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-      activeOpacity={0.75}
-      onPress={handlePress}
-    >
-      <View style={[styles.colorStrip, { backgroundColor: tool.color }]} />
-      <View style={styles.cardBody}>
+    <GoldenFrame radius={16} style={{ flex: 1 }}>
+      <TouchableOpacity
+        style={[styles.card, { backgroundColor: colors.card, borderWidth: 0 }]}
+        activeOpacity={0.75}
+        onPress={handlePress}
+      >
+        <View style={[styles.colorStrip, { backgroundColor: tool.color }]} />
+        <View style={styles.cardBody}>
         <View style={styles.cardTop}>
           <View style={[styles.toolIcon, { backgroundColor: tool.color + "33" }]}>
             <Feather name="tool" size={18} color={tool.color} />
@@ -94,7 +96,8 @@ function ToolCard({ tool }: { tool: Tool }) {
           <Feather name="arrow-left" size={16} color={colors.mutedForeground} />
         </View>
       </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </GoldenFrame>
   );
 }
 

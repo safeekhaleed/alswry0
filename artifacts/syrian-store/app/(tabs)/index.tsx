@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { GoldenFrame } from "@/components/GoldenFrame";
 import { ProfileModal, SecurityModal, CartModal, ContactModal } from "@/components/DrawerModals";
 
 type Tool = { id: number; title: string; color: string; url?: string | null; isActive: boolean; imageUrl?: string | null; description?: string | null; [k: string]: unknown };
@@ -170,27 +171,29 @@ function ToolCard({ tool }: { tool: Tool }) {
   };
   const cardColor = tool.color || "#7c3aed";
   return (
-    <TouchableOpacity style={[styles.toolCard, { borderColor: cardColor + "50", backgroundColor: cardColor + "14" }]} activeOpacity={0.8} onPress={handlePress}>
-      <View style={[styles.toolCardGlow, { backgroundColor: cardColor + "30" }]} />
-      <Text style={[styles.toolSparkle1, { color: cardColor }]}>✦</Text>
-      <Text style={[styles.toolSparkle2, { color: cardColor }]}>✦</Text>
-      <View style={styles.toolCardIconWrap}>
-        {(tool as any).imageUrl ? (
-          <Image source={{ uri: (tool as any).imageUrl }} style={styles.toolCardImage} resizeMode="cover" />
-        ) : (
-          <View style={[styles.toolCardIcon, { backgroundColor: cardColor + "35", borderColor: cardColor + "70" }]}>
-            <Feather name="tool" size={24} color={cardColor} />
-          </View>
-        )}
-      </View>
-      <Text style={[styles.toolCardLabel, { color: colors.foreground }]} numberOfLines={2}>{tool.title}</Text>
-      {(tool as any).description ? (
-        <Text style={[styles.toolCardSub, { color: colors.mutedForeground }]} numberOfLines={1}>{(tool as any).description}</Text>
-      ) : null}
-      <View style={[styles.toolCardArrow, { backgroundColor: cardColor + "22", borderColor: cardColor + "44" }]}>
-        <Feather name="arrow-left" size={13} color={cardColor} />
-      </View>
-    </TouchableOpacity>
+    <GoldenFrame radius={18} style={{ width: "48%", minHeight: 148 }}>
+      <TouchableOpacity style={[styles.toolCard, { backgroundColor: cardColor + "14", width: undefined, minHeight: undefined, borderWidth: 0, flex: 1 }]} activeOpacity={0.8} onPress={handlePress}>
+        <View style={[styles.toolCardGlow, { backgroundColor: cardColor + "30" }]} />
+        <Text style={[styles.toolSparkle1, { color: cardColor }]}>✦</Text>
+        <Text style={[styles.toolSparkle2, { color: cardColor }]}>✦</Text>
+        <View style={styles.toolCardIconWrap}>
+          {(tool as any).imageUrl ? (
+            <Image source={{ uri: (tool as any).imageUrl }} style={styles.toolCardImage} resizeMode="cover" />
+          ) : (
+            <View style={[styles.toolCardIcon, { backgroundColor: cardColor + "35", borderColor: cardColor + "70" }]}>
+              <Feather name="tool" size={24} color={cardColor} />
+            </View>
+          )}
+        </View>
+        <Text style={[styles.toolCardLabel, { color: colors.foreground }]} numberOfLines={2}>{tool.title}</Text>
+        {(tool as any).description ? (
+          <Text style={[styles.toolCardSub, { color: colors.mutedForeground }]} numberOfLines={1}>{(tool as any).description}</Text>
+        ) : null}
+        <View style={[styles.toolCardArrow, { backgroundColor: cardColor + "22", borderColor: cardColor + "44" }]}>
+          <Feather name="arrow-left" size={13} color={cardColor} />
+        </View>
+      </TouchableOpacity>
+    </GoldenFrame>
   );
 }
 
@@ -211,12 +214,14 @@ function EmptyToolCard() {
 function StatCard({ icon, label, value, color }: { icon: React.ComponentProps<typeof Feather>["name"]; label: string; value: React.ReactNode; color: string }) {
   const colors = useColors();
   return (
-    <View style={[styles.statCard, { backgroundColor: color + "10", borderColor: color + "30" }]}>
-      <View style={[styles.statCardBottomGlow, { backgroundColor: color + "18" }]} />
-      <Feather name={icon} size={20} color={color} />
-      <Text style={[styles.statCardValue, { color: color }]}>{value ?? "—"}</Text>
-      <Text style={[styles.statCardLabel, { color: colors.mutedForeground }]}>{label}</Text>
-    </View>
+    <GoldenFrame radius={14} style={{ flex: 1 }}>
+      <View style={[styles.statCard, { backgroundColor: color + "10" }]}>
+        <View style={[styles.statCardBottomGlow, { backgroundColor: color + "18" }]} />
+        <Feather name={icon} size={20} color={color} />
+        <Text style={[styles.statCardValue, { color: color }]}>{value ?? "—"}</Text>
+        <Text style={[styles.statCardLabel, { color: colors.mutedForeground }]}>{label}</Text>
+      </View>
+    </GoldenFrame>
   );
 }
 

@@ -22,11 +22,12 @@ const API_BASE = (() => {
   return d ? `https://${d}` : "";
 })();
 
-async function apiCall(path: string, method = "GET", body?: object) {
+async function apiCall(path: string, method = "GET", body?: object, token?: string | null) {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${API_BASE}/api${path}`, {
     method,
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
   const json = await res.json();
@@ -77,7 +78,7 @@ const f = StyleSheet.create({
 });
 
 export function ProfileModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { user, refreshUser } = useAuth() as any;
+  const { user, refreshUser, token } = useAuth() as any;
   const [username, setUsername] = useState(user?.username ?? "");
   const [avatarUri, setAvatarUri] = useState(user?.avatarUrl ?? "");
   const [saving, setSaving] = useState(false);
@@ -105,7 +106,7 @@ export function ProfileModal({ visible, onClose }: { visible: boolean; onClose: 
         const uploadRes = await apiCall("/upload", "POST", {
           base64: asset.base64,
           mimeType: asset.mimeType ?? "image/jpeg",
-        });
+        }, token);
         setAvatarUri(uploadRes.url);
       } catch (e: any) {
         Alert.alert("خطأ", "فشل رفع الصورة: " + e.message);
@@ -117,7 +118,7 @@ export function ProfileModal({ visible, onClose }: { visible: boolean; onClose: 
     if (!username.trim()) { Alert.alert("مطلوب", "أدخل اسم المستخدم."); return; }
     setSaving(true);
     try {
-      await apiCall("/auth/user/profile", "PATCH", { username: username.trim(), avatarUrl: avatarUri || null });
+      await apiCall("/auth/user/profile", "PATCH", { username: username.trim(), avatarUrl: avatarUri || null }, token);
       await refreshUser?.();
       Alert.alert("تم الحفظ ✓", "تم تحديث ملفك الشخصي.");
       onClose();
@@ -163,7 +164,7 @@ const pm = StyleSheet.create({
 });
 
 export function SecurityModal({ visible, onClose, onLoggedOut }: { visible: boolean; onClose: () => void; onLoggedOut: () => void }) {
-  const { logout } = useAuth();
+  const { logout, token } = useAuth() as any;
   const [tab, setTab] = useState<"password" | "email" | "delete">("password");
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
@@ -180,7 +181,7 @@ export function SecurityModal({ visible, onClose, onLoggedOut }: { visible: bool
     if (!newPw || newPw !== confirmPw) { Alert.alert("خطأ", "كلمتا المرور غير متطابقتين."); return; }
     setSaving(true);
     try {
-      await apiCall("/auth/user/password", "PATCH", { currentPassword: currentPw, newPassword: newPw });
+      await apiCall("/auth/user/password", "PATCH", { currentPassword: currentPw, newPassword: newPw }, token);
       Alert.alert("تم ✓", "تم تغيير كلمة المرور بنجاح."); reset(); onClose();
     } catch (e: any) { Alert.alert("خطأ", e.message); } finally { setSaving(false); }
   };
@@ -189,7 +190,7 @@ export function SecurityModal({ visible, onClose, onLoggedOut }: { visible: bool
     if (!newEmail.trim()) { Alert.alert("مطلوب", "أدخل البريد الإلكتروني الجديد."); return; }
     setSaving(true);
     try {
-      await apiCall("/auth/user/email", "PATCH", { newEmail: newEmail.trim(), password: emailPw });
+      await apiCall("/auth/user/email", "PATCH", { newEmail: newEmail.trim(), password: emailPw }, token);
       Alert.alert("تم ✓", "تم تغيير البريد الإلكتروني."); reset(); onClose();
     } catch (e: any) { Alert.alert("خطأ", e.message); } finally { setSaving(false); }
   };
@@ -200,7 +201,7 @@ export function SecurityModal({ visible, onClose, onLoggedOut }: { visible: bool
       { text: "حذف", style: "destructive", onPress: async () => {
         setSaving(true);
         try {
-          await apiCall("/auth/user/account", "DELETE", { password: deletePw });
+          await apiCall("/auth/user/account", "DELETE", { password: deletePw }, token);
           await logout();
           onClose();
           onLoggedOut();
@@ -264,6 +265,7 @@ const sec = StyleSheet.create({
 });
 
 export function CartModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { token } = useAuth() as any;
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [addSheet, setAddSheet] = useState(false);
@@ -276,21 +278,22 @@ export function CartModal({ visible, onClose }: { visible: boolean; onClose: () 
 
   const load = async () => {
     setLoading(true);
-    try { setItems(await apiCall("/cart")); } catch {} finally { setLoading(false); }
+    try { setItems(await apiCall("/cart", "GET", undefined, token)); } catch {} finally { setLoading(false); }
   };
 
   const remove = async (id: number) => {
     try {
-      await apiCall(`/cart/${id}`, "DELETE");
+      await apiCall(`/cart/${id}`, "DELETE", undefined, token);
       setItems((p) => p.filter((i) => i.id !== id));
     } catch (e: any) { Alert.alert("خطأ", e.message); }
   };
 
   const uploadBase64 = async (base64: string, mimeType: string) => {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
     const res = await fetch(`${API_BASE}/api/upload`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
+      headers,
       body: JSON.stringify({ base64, mimeType }),
     });
     const json = await res.json();
@@ -302,7 +305,7 @@ export function CartModal({ visible, onClose }: { visible: boolean; onClose: () 
     if (!addNote.trim()) { Alert.alert("مطلوب", "أدخل نص الرسالة"); return; }
     setUploading(true);
     try {
-      const added = await apiCall("/cart", "POST", { type: "text", title: "رسالة", content: addNote.trim() });
+      const added = await apiCall("/cart", "POST", { type: "text", title: "رسالة", content: addNote.trim() }, token);
       setItems((p) => [added, ...p]);
       setAddNote("");
       setAddSheet(false);
@@ -323,7 +326,7 @@ export function CartModal({ visible, onClose }: { visible: boolean; onClose: () 
     setUploading(true);
     try {
       const url = await uploadBase64(asset.base64!, asset.mimeType ?? "image/jpeg");
-      const added = await apiCall("/cart", "POST", { type: "image", title: "صورة", content: url, thumbnailUrl: url });
+      const added = await apiCall("/cart", "POST", { type: "image", title: "صورة", content: url, thumbnailUrl: url }, token);
       setItems((p) => [added, ...p]);
       setAddSheet(false);
     } catch (e: any) { Alert.alert("خطأ", "فشل رفع الصورة: " + e.message); } finally { setUploading(false); }
@@ -338,7 +341,7 @@ export function CartModal({ visible, onClose }: { visible: boolean; onClose: () 
       const FileSystem = await import("expo-file-system/legacy");
       const b64 = await FileSystem.readAsStringAsync(file.uri, { encoding: "base64" });
       const url = await uploadBase64(b64, file.mimeType ?? "application/octet-stream");
-      const added = await apiCall("/cart", "POST", { type: "file", title: file.name, content: url });
+      const added = await apiCall("/cart", "POST", { type: "file", title: file.name, content: url }, token);
       setItems((p) => [added, ...p]);
       setAddSheet(false);
     } catch (e: any) { Alert.alert("خطأ", "فشل رفع الملف: " + e.message); } finally { setUploading(false); }
@@ -491,6 +494,7 @@ const cart = StyleSheet.create({
 });
 
 export function NotificationsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { token } = useAuth() as any;
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -500,12 +504,12 @@ export function NotificationsModal({ visible, onClose }: { visible: boolean; onC
 
   const load = async () => {
     setLoading(true);
-    try { setItems(await apiCall("/notifications")); } catch {} finally { setLoading(false); }
+    try { setItems(await apiCall("/notifications", "GET", undefined, token)); } catch {} finally { setLoading(false); }
   };
 
   const markRead = async (id: number) => {
     try {
-      await apiCall(`/notifications/${id}/read`, "PATCH");
+      await apiCall(`/notifications/${id}/read`, "PATCH", undefined, token);
       setItems((p) => p.map((n) => n.id === id ? { ...n, isRead: true } : n));
     } catch {}
   };

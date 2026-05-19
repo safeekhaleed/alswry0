@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
+import { GoldenFrame } from "@/components/GoldenFrame";
 
 type Service = {
   id: number;
@@ -57,66 +58,68 @@ function ServiceCard({ service }: { service: Service }) {
   const isAvailable = service.isAvailable;
 
   return (
-    <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-      activeOpacity={isAvailable ? 0.75 : 1}
-    >
-      <View style={styles.cardMain}>
-        <View style={styles.cardLeft}>
-          <View
-            style={[
-              styles.availableBadge,
-              { backgroundColor: isAvailable ? "#34d39922" : colors.muted },
-            ]}
-          >
+    <GoldenFrame radius={16}>
+      <TouchableOpacity
+        style={[styles.card, { backgroundColor: colors.card, borderWidth: 0 }]}
+        activeOpacity={isAvailable ? 0.75 : 1}
+      >
+        <View style={styles.cardMain}>
+          <View style={styles.cardLeft}>
             <View
               style={[
-                styles.availableDot,
-                { backgroundColor: isAvailable ? "#34d399" : colors.mutedForeground },
-              ]}
-            />
-            <Text
-              style={[
-                styles.availableText,
-                { color: isAvailable ? "#34d399" : colors.mutedForeground },
+                styles.availableBadge,
+                { backgroundColor: isAvailable ? "#34d39922" : colors.muted },
               ]}
             >
-              {isAvailable ? "متاح" : "غير متاح"}
-            </Text>
+              <View
+                style={[
+                  styles.availableDot,
+                  { backgroundColor: isAvailable ? "#34d399" : colors.mutedForeground },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.availableText,
+                  { color: isAvailable ? "#34d399" : colors.mutedForeground },
+                ]}
+              >
+                {isAvailable ? "متاح" : "غير متاح"}
+              </Text>
+            </View>
+            <View style={[styles.priceBox, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "44" }]}>
+              <Text style={[styles.priceValue, { color: colors.primary }]}>
+                {service.price > 0 ? service.price.toLocaleString("ar-SA") : "مجاني"}
+              </Text>
+              {service.price > 0 && (
+                <Text style={[styles.priceCurrency, { color: colors.primary }]}>$</Text>
+              )}
+            </View>
           </View>
-          <View style={[styles.priceBox, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "44" }]}>
-            <Text style={[styles.priceValue, { color: colors.primary }]}>
-              {service.price > 0 ? service.price.toLocaleString("ar-SA") : "مجاني"}
+          <View style={styles.cardRight}>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]} numberOfLines={2}>
+              {service.title}
             </Text>
-            {service.price > 0 && (
-              <Text style={[styles.priceCurrency, { color: colors.primary }]}>$</Text>
-            )}
+            <Text style={[styles.cardDesc, { color: colors.mutedForeground }]} numberOfLines={3}>
+              {service.description}
+            </Text>
+            <View style={[styles.categoryTag, { backgroundColor: colors.secondary }]}>
+              <Text style={[styles.categoryText, { color: colors.mutedForeground }]}>
+                {service.category}
+              </Text>
+            </View>
           </View>
         </View>
-        <View style={styles.cardRight}>
-          <Text style={[styles.cardTitle, { color: colors.foreground }]} numberOfLines={2}>
-            {service.title}
-          </Text>
-          <Text style={[styles.cardDesc, { color: colors.mutedForeground }]} numberOfLines={3}>
-            {service.description}
-          </Text>
-          <View style={[styles.categoryTag, { backgroundColor: colors.secondary }]}>
-            <Text style={[styles.categoryText, { color: colors.mutedForeground }]}>
-              {service.category}
-            </Text>
-          </View>
-        </View>
-      </View>
-      {isAvailable && (
-        <TouchableOpacity
-          style={[styles.requestBtn, { backgroundColor: colors.primary }]}
-          activeOpacity={0.8}
-        >
-          <Feather name="send" size={14} color={colors.primaryForeground} />
-          <Text style={[styles.requestBtnText, { color: colors.primaryForeground }]}>طلب الخدمة</Text>
-        </TouchableOpacity>
-      )}
-    </TouchableOpacity>
+        {isAvailable && (
+          <TouchableOpacity
+            style={[styles.requestBtn, { backgroundColor: colors.primary }]}
+            activeOpacity={0.8}
+          >
+            <Feather name="send" size={14} color={colors.primaryForeground} />
+            <Text style={[styles.requestBtnText, { color: colors.primaryForeground }]}>طلب الخدمة</Text>
+          </TouchableOpacity>
+        )}
+      </TouchableOpacity>
+    </GoldenFrame>
   );
 }
 

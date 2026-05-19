@@ -33,10 +33,6 @@ function NativeTabLayout() {
         <Icon sf={{ default: "star", selected: "star.fill" }} />
         <Label>الخدمات</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="notifications">
-        <Icon sf={{ default: "bell", selected: "bell.fill" }} />
-        <Label>الإشعارات</Label>
-      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
@@ -148,13 +144,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          title: "الإشعارات",
-          tabBarIcon: ({ color, size }) =>
-            isIOS ? (
-              <SymbolView name="bell.fill" tintColor={color} size={size} />
-            ) : (
-              <Feather name="bell" size={size} color={color} />
-            ),
+          href: null,
         }}
       />
     </Tabs>

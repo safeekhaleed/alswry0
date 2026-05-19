@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { GoldenFrame } from "@/components/GoldenFrame";
 import { useColors } from "@/hooks/useColors";
 
 type Service = {
@@ -283,43 +284,45 @@ const mo = StyleSheet.create({
 function ServiceCard({ service, onOrder }: { service: Service; onOrder: (s: Service) => void }) {
   const colors = useColors();
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={styles.cardHeader}>
-        <View style={[styles.cardIcon, { backgroundColor: colors.primary + "22" }]}>
-          <Feather name="package" size={20} color={colors.primary} />
+    <GoldenFrame radius={16}>
+      <View style={[styles.card, { backgroundColor: colors.card, borderWidth: 0 }]}>
+        <View style={styles.cardHeader}>
+          <View style={[styles.cardIcon, { backgroundColor: colors.primary + "22" }]}>
+            <Feather name="package" size={20} color={colors.primary} />
+          </View>
+          <View style={[styles.priceBadge, { backgroundColor: service.isAvailable ? (service.price === 0 ? "#34d39922" : colors.primary) : colors.border }]}>
+            <Text style={[styles.priceText, { color: service.isAvailable ? (service.price === 0 ? "#34d399" : "#0f1624") : colors.mutedForeground }]}>
+              {service.price === 0 ? "مجاني" : `$${service.price}`}
+            </Text>
+          </View>
         </View>
-        <View style={[styles.priceBadge, { backgroundColor: service.isAvailable ? (service.price === 0 ? "#34d39922" : colors.primary) : colors.border }]}>
-          <Text style={[styles.priceText, { color: service.isAvailable ? (service.price === 0 ? "#34d399" : "#0f1624") : colors.mutedForeground }]}>
-            {service.price === 0 ? "مجاني" : `$${service.price}`}
-          </Text>
+        <Text style={[styles.cardTitle, { color: colors.foreground }]} numberOfLines={2}>{service.title}</Text>
+        <Text style={[styles.cardDesc, { color: colors.mutedForeground }]} numberOfLines={3}>{service.description}</Text>
+        <View style={styles.cardFooter}>
+          <View style={[styles.categoryChip, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+            <Text style={[styles.categoryText, { color: colors.mutedForeground }]}>{service.category}</Text>
+          </View>
+          <View style={[styles.availBadge, { backgroundColor: service.isAvailable ? "#34d39922" : "#ef444422" }]}>
+            <View style={[styles.availDot, { backgroundColor: service.isAvailable ? "#34d399" : "#ef4444" }]} />
+            <Text style={[styles.availText, { color: service.isAvailable ? "#34d399" : "#ef4444" }]}>
+              {service.isAvailable ? "متاح" : "غير متاح"}
+            </Text>
+          </View>
         </View>
+        {service.isAvailable && (
+          <TouchableOpacity
+            style={[styles.orderBtn, { backgroundColor: service.price === 0 ? "#34d39922" : colors.primary, borderWidth: service.price === 0 ? 1 : 0, borderColor: "#34d39944" }]}
+            activeOpacity={0.85}
+            onPress={() => onOrder(service)}
+          >
+            <Feather name={service.price === 0 ? "gift" : "credit-card"} size={15} color={service.price === 0 ? "#34d399" : "#0f1624"} />
+            <Text style={[styles.orderBtnText, { color: service.price === 0 ? "#34d399" : "#0f1624" }]}>
+              {service.price === 0 ? "احصل مجاناً" : `شراء $${service.price}`}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
-      <Text style={[styles.cardTitle, { color: colors.foreground }]} numberOfLines={2}>{service.title}</Text>
-      <Text style={[styles.cardDesc, { color: colors.mutedForeground }]} numberOfLines={3}>{service.description}</Text>
-      <View style={styles.cardFooter}>
-        <View style={[styles.categoryChip, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-          <Text style={[styles.categoryText, { color: colors.mutedForeground }]}>{service.category}</Text>
-        </View>
-        <View style={[styles.availBadge, { backgroundColor: service.isAvailable ? "#34d39922" : "#ef444422" }]}>
-          <View style={[styles.availDot, { backgroundColor: service.isAvailable ? "#34d399" : "#ef4444" }]} />
-          <Text style={[styles.availText, { color: service.isAvailable ? "#34d399" : "#ef4444" }]}>
-            {service.isAvailable ? "متاح" : "غير متاح"}
-          </Text>
-        </View>
-      </View>
-      {service.isAvailable && (
-        <TouchableOpacity
-          style={[styles.orderBtn, { backgroundColor: service.price === 0 ? "#34d39922" : colors.primary, borderWidth: service.price === 0 ? 1 : 0, borderColor: "#34d39944" }]}
-          activeOpacity={0.85}
-          onPress={() => onOrder(service)}
-        >
-          <Feather name={service.price === 0 ? "gift" : "credit-card"} size={15} color={service.price === 0 ? "#34d399" : "#0f1624"} />
-          <Text style={[styles.orderBtnText, { color: service.price === 0 ? "#34d399" : "#0f1624" }]}>
-            {service.price === 0 ? "احصل مجاناً" : `شراء $${service.price}`}
-          </Text>
-        </TouchableOpacity>
-      )}
-    </View>
+    </GoldenFrame>
   );
 }
 

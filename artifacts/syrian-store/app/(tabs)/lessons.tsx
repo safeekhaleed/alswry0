@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
+import { GoldenFrame } from "@/components/GoldenFrame";
 
 type Lesson = {
   id: number;
@@ -62,42 +63,44 @@ function formatDuration(minutes: number): string {
 function LessonCard({ lesson, onPress }: { lesson: Lesson; onPress: () => void }) {
   const colors = useColors();
   return (
-    <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-      activeOpacity={0.75}
-      onPress={onPress}
-    >
-      <View style={styles.cardHeader}>
-        <View style={[styles.durationBadge, { backgroundColor: colors.primary + "22" }]}>
-          <Feather name="clock" size={11} color={colors.primary} />
-          <Text style={[styles.durationText, { color: colors.primary }]}>
-            {formatDuration(lesson.duration)}
-          </Text>
+    <GoldenFrame radius={16}>
+      <TouchableOpacity
+        style={[styles.card, { backgroundColor: colors.card, borderWidth: 0 }]}
+        activeOpacity={0.75}
+        onPress={onPress}
+      >
+        <View style={styles.cardHeader}>
+          <View style={[styles.durationBadge, { backgroundColor: colors.primary + "22" }]}>
+            <Feather name="clock" size={11} color={colors.primary} />
+            <Text style={[styles.durationText, { color: colors.primary }]}>
+              {formatDuration(lesson.duration)}
+            </Text>
+          </View>
+          <View style={styles.cardTitleRow}>
+            <View
+              style={[
+                styles.publishedDot,
+                { backgroundColor: lesson.isPublished ? "#34d399" : colors.muted },
+              ]}
+            />
+            <Text style={[styles.cardTitle, { color: colors.foreground }]} numberOfLines={2}>
+              {lesson.title}
+            </Text>
+          </View>
         </View>
-        <View style={styles.cardTitleRow}>
-          <View
-            style={[
-              styles.publishedDot,
-              { backgroundColor: lesson.isPublished ? "#34d399" : colors.muted },
-            ]}
-          />
-          <Text style={[styles.cardTitle, { color: colors.foreground }]} numberOfLines={2}>
-            {lesson.title}
-          </Text>
+        <Text style={[styles.cardDescription, { color: colors.mutedForeground }]} numberOfLines={2}>
+          {lesson.description}
+        </Text>
+        <View style={styles.cardFooter}>
+          <View style={[styles.categoryBadge, { backgroundColor: colors.secondary }]}>
+            <Text style={[styles.categoryText, { color: colors.mutedForeground }]}>
+              {lesson.category}
+            </Text>
+          </View>
+          <Feather name="play-circle" size={22} color={colors.primary} />
         </View>
-      </View>
-      <Text style={[styles.cardDescription, { color: colors.mutedForeground }]} numberOfLines={2}>
-        {lesson.description}
-      </Text>
-      <View style={styles.cardFooter}>
-        <View style={[styles.categoryBadge, { backgroundColor: colors.secondary }]}>
-          <Text style={[styles.categoryText, { color: colors.mutedForeground }]}>
-            {lesson.category}
-          </Text>
-        </View>
-        <Feather name="play-circle" size={22} color={colors.primary} />
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </GoldenFrame>
   );
 }
 
