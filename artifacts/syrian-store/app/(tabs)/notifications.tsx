@@ -18,11 +18,12 @@ const API_BASE = (() => {
   return d ? `https://${d}` : "";
 })();
 
-async function apiCall(path: string, method = "GET", body?: object) {
+async function apiCall(path: string, method = "GET", body?: object, token?: string | null) {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${API_BASE}/api${path}`, {
     method,
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
   const json = await res.json();
@@ -54,7 +55,7 @@ const TYPE_COLOR: Record<string, string> = {
 };
 
 export default function NotificationsScreen() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -65,7 +66,7 @@ export default function NotificationsScreen() {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const data = await apiCall("/notifications");
+      const data = await apiCall("/notifications", "GET", undefined, token);
       setItems(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "تعذّر تحميل الإشعارات");
@@ -73,11 +74,11 @@ export default function NotificationsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
-    if (user) load();
-  }, [user, load]);
+    if (user && token) load();
+  }, [user, token, load]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -86,7 +87,7 @@ export default function NotificationsScreen() {
 
   const markRead = async (id: number) => {
     try {
-      await apiCall(`/notifications/${id}/read`, "PATCH");
+      await apiCall(`/notifications/${id}/read`, "PATCH", undefined, token);
       setItems((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
     } catch {}
   };
