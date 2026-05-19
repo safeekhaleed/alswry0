@@ -18,6 +18,7 @@ export const usersTable = pgTable("users", {
   isAdmin: boolean("is_admin").notNull().default(false),
   pushToken: text("push_token"),
   accountId: text("account_id"),
+  avatarUrl: text("avatar_url"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

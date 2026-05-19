@@ -264,13 +264,11 @@ const sec = StyleSheet.create({
   tabTextActive: { color: "#0d0028" },
 });
 
-export function CartModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function PurchasesModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { token } = useAuth() as any;
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [addSheet, setAddSheet] = useState(false);
-  const [addNote, setAddNote] = useState("");
-  const [uploading, setUploading] = useState(false);
+  const [expanded, setExpanded] = useState<number | null>(null);
 
   useEffect(() => {
     if (visible) load();
@@ -278,219 +276,90 @@ export function CartModal({ visible, onClose }: { visible: boolean; onClose: () 
 
   const load = async () => {
     setLoading(true);
-    try { setItems(await apiCall("/cart", "GET", undefined, token)); } catch {} finally { setLoading(false); }
+    try { setItems(await apiCall("/purchases", "GET", undefined, token)); } catch {} finally { setLoading(false); }
   };
 
-  const remove = async (id: number) => {
-    try {
-      await apiCall(`/cart/${id}`, "DELETE", undefined, token);
-      setItems((p) => p.filter((i) => i.id !== id));
-    } catch (e: any) { Alert.alert("خطأ", e.message); }
-  };
-
-  const uploadBase64 = async (base64: string, mimeType: string) => {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(`${API_BASE}/api/upload`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ base64, mimeType }),
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error ?? "خطأ في الرفع");
-    return json.url as string;
-  };
-
-  const addText = async () => {
-    if (!addNote.trim()) { Alert.alert("مطلوب", "أدخل نص الرسالة"); return; }
-    setUploading(true);
-    try {
-      const added = await apiCall("/cart", "POST", { type: "text", title: "رسالة", content: addNote.trim() }, token);
-      setItems((p) => [added, ...p]);
-      setAddNote("");
-      setAddSheet(false);
-    } catch (e: any) { Alert.alert("خطأ", e.message); } finally { setUploading(false); }
-  };
-
-  const addImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") { Alert.alert("إذن مطلوب", "يرجى السماح بالوصول إلى الصور."); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
-      quality: 0.8,
-      base64: true,
-    });
-    if (result.canceled) return;
-    const asset = result.assets[0];
-    setUploading(true);
-    try {
-      const url = await uploadBase64(asset.base64!, asset.mimeType ?? "image/jpeg");
-      const added = await apiCall("/cart", "POST", { type: "image", title: "صورة", content: url, thumbnailUrl: url }, token);
-      setItems((p) => [added, ...p]);
-      setAddSheet(false);
-    } catch (e: any) { Alert.alert("خطأ", "فشل رفع الصورة: " + e.message); } finally { setUploading(false); }
-  };
-
-  const addFile = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, type: "*/*" });
-      if (result.canceled) return;
-      const file = result.assets[0];
-      setUploading(true);
-      const FileSystem = await import("expo-file-system/legacy");
-      const b64 = await FileSystem.readAsStringAsync(file.uri, { encoding: "base64" });
-      const url = await uploadBase64(b64, file.mimeType ?? "application/octet-stream");
-      const added = await apiCall("/cart", "POST", { type: "file", title: file.name, content: url }, token);
-      setItems((p) => [added, ...p]);
-      setAddSheet(false);
-    } catch (e: any) { Alert.alert("خطأ", "فشل رفع الملف: " + e.message); } finally { setUploading(false); }
-  };
-
-  const typeIcon: Record<string, React.ComponentProps<typeof Feather>["name"]> = {
-    text: "file-text", image: "image", video: "video", file: "paperclip", link: "link", service: "package",
-  };
-  const typeColor: Record<string, string> = {
-    text: "#60a5fa", image: "#34d399", video: "#a78bfa", file: "#d4a017", link: "#f97316", service: "#d4a017",
+  const openContent = (item: any) => {
+    if (item.content) {
+      if (item.contentType === "url" || item.content.startsWith("http")) {
+        Linking.openURL(item.content).catch(() => Alert.alert("خطأ", "تعذّر فتح الرابط"));
+      } else {
+        setExpanded((prev) => (prev === item.id ? null : item.id));
+      }
+    }
   };
 
   return (
-    <>
-      <Sheet visible={visible} onClose={onClose} title="السلة">
-        {loading ? (
-          <View style={cart.center}><Text style={cart.empty}>جاري التحميل...</Text></View>
-        ) : (
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 24 }}>
-            {items.length === 0 && (
-              <View style={cart.center}>
-                <Feather name="shopping-cart" size={48} color="#2d4a6a" />
-                <Text style={cart.empty}>السلة فارغة</Text>
-                <Text style={cart.emptySub}>ستصل هنا المنتجات التي تحفظها</Text>
-              </View>
-            )}
-            {items.map((item) => {
-              const icon = typeIcon[item.type] ?? "file";
-              const color = typeColor[item.type] ?? "#94a3b8";
-              const canOpen = item.content && item.type !== "text";
-              const openContent = () => {
-                if (item.type === "text") {
-                  Alert.alert(item.title ?? "المحتوى", item.content ?? "");
-                } else if (item.content) {
-                  Linking.openURL(item.content).catch(() => Alert.alert("خطأ", "تعذّر فتح الرابط"));
-                }
-              };
-              return (
-                <View key={item.id} style={cart.card}>
-                  {item.thumbnailUrl ? (
-                    <Image source={{ uri: item.thumbnailUrl }} style={cart.thumb} />
-                  ) : (
-                    <View style={[cart.iconBox, { backgroundColor: color + "22" }]}>
-                      <Feather name={icon} size={20} color={color} />
-                    </View>
-                  )}
-                  <View style={cart.info}>
-                    <Text style={cart.itemTitle} numberOfLines={1}>{item.title ?? item.content}</Text>
-                    {item.type === "text" && item.content ? (
-                      <Text style={cart.contentPreview} numberOfLines={2}>{item.content}</Text>
-                    ) : (
-                      <Text style={cart.itemType}>{item.type}</Text>
-                    )}
-                  </View>
-                  <View style={{ flexDirection: "row", gap: 6 }}>
-                    {(canOpen || item.type === "text") && (
-                      <TouchableOpacity onPress={openContent} style={cart.openBtn}>
-                        <Feather name={item.type === "text" ? "eye" : "external-link"} size={15} color="#60a5fa" />
-                      </TouchableOpacity>
-                    )}
-                    <TouchableOpacity onPress={() => remove(item.id)} style={cart.deleteBtn}>
-                      <Feather name="trash-2" size={16} color="#ef4444" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            })}
-            <TouchableOpacity style={cart.addBtn} activeOpacity={0.85} onPress={() => { setAddNote(""); setAddSheet(true); }}>
-              <Feather name="plus" size={16} color="#d4a017" />
-              <Text style={cart.addBtnText}>إضافة عنصر</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        )}
-      </Sheet>
-
-      <Modal visible={addSheet} transparent animationType="slide" onRequestClose={() => setAddSheet(false)}>
-        <View style={sh.backdrop}>
-          <TouchableOpacity style={sh.overlay} activeOpacity={1} onPress={() => setAddSheet(false)} />
-          <View style={[sh.sheet, { paddingBottom: 32 }]}>
-            <View style={sh.handle} />
-            <View style={sh.header}>
-              <TouchableOpacity onPress={() => setAddSheet(false)} style={sh.closeBtn}>
-                <Feather name="x" size={20} color="#94a3b8" />
-              </TouchableOpacity>
-              <Text style={sh.title}>إضافة عنصر للسلة</Text>
-              <View style={{ width: 36 }} />
-            </View>
-
-            <View style={cart.addOptions}>
-              <TouchableOpacity style={cart.optionBtn} onPress={addImage} disabled={uploading} activeOpacity={0.8}>
-                <View style={[cart.optionIcon, { backgroundColor: "#34d39922" }]}>
-                  <Feather name="image" size={24} color="#34d399" />
-                </View>
-                <Text style={cart.optionLabel}>صورة</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={cart.optionBtn} onPress={addFile} disabled={uploading} activeOpacity={0.8}>
-                <View style={[cart.optionIcon, { backgroundColor: "#d4a01722" }]}>
-                  <Feather name="paperclip" size={24} color="#d4a017" />
-                </View>
-                <Text style={cart.optionLabel}>ملف</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ gap: 8, marginTop: 8 }}>
-              <Text style={f.label}>رسالة نصية</Text>
-              <TextInput
-                value={addNote}
-                onChangeText={setAddNote}
-                placeholder="اكتب رسالتك هنا..."
-                placeholderTextColor="#4b6280"
-                style={[f.input, { minHeight: 80, textAlignVertical: "top" }]}
-                multiline
-                textAlign="right"
-              />
-              <TouchableOpacity
-                style={[f.btn, (uploading || !addNote.trim()) && { opacity: 0.5 }]}
-                onPress={addText}
-                disabled={uploading || !addNote.trim()}
-                activeOpacity={0.85}
-              >
-                <Text style={f.btnText}>{uploading ? "جاري الرفع..." : "إرسال"}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+    <Sheet visible={visible} onClose={onClose} title="مشترياتي">
+      {loading ? (
+        <View style={pur.center}><Text style={pur.empty}>جاري التحميل...</Text></View>
+      ) : items.length === 0 ? (
+        <View style={pur.center}>
+          <Feather name="package" size={52} color="#2d4a6a" />
+          <Text style={pur.empty}>لا توجد مشتريات بعد</Text>
+          <Text style={pur.emptySub}>ستظهر هنا المنتجات التي اشتريتها</Text>
         </View>
-      </Modal>
-    </>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 24 }}>
+          {items.map((item) => {
+            const isExp = expanded === item.id;
+            const hasContent = !!item.content;
+            const isUrl = item.contentType === "url" || (item.content ?? "").startsWith("http");
+            return (
+              <View key={item.id} style={pur.card}>
+                {item.imageUrl ? (
+                  <Image source={{ uri: item.imageUrl }} style={pur.thumb} />
+                ) : (
+                  <View style={pur.iconBox}>
+                    <Feather name="package" size={20} color="#d4a017" />
+                  </View>
+                )}
+                <View style={pur.info}>
+                  <Text style={pur.itemTitle} numberOfLines={1}>{item.itemTitle}</Text>
+                  <Text style={pur.amount}>{Number(item.amount).toLocaleString("ar-SY")} $</Text>
+                  <Text style={pur.date}>
+                    {new Date(item.createdAt).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" })}
+                  </Text>
+                </View>
+                {hasContent && (
+                  <TouchableOpacity onPress={() => openContent(item)} style={pur.openBtn}>
+                    <Feather name={isUrl ? "external-link" : (isExp ? "chevron-up" : "eye")} size={18} color="#d4a017" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })}
+          {expanded !== null && (() => {
+            const item = items.find((i) => i.id === expanded);
+            if (!item?.content) return null;
+            return (
+              <View style={pur.contentBox}>
+                <Text style={pur.contentTitle}>محتوى المنتج</Text>
+                <Text style={pur.contentText} selectable>{item.content}</Text>
+              </View>
+            );
+          })()}
+        </ScrollView>
+      )}
+    </Sheet>
   );
 }
 
-const cart = StyleSheet.create({
+const pur = StyleSheet.create({
   center: { alignItems: "center", paddingVertical: 48, gap: 12 },
   empty: { fontFamily: "Cairo_600SemiBold", fontSize: 16, color: "#64748b" },
   emptySub: { fontFamily: "Cairo_400Regular", fontSize: 13, color: "#334155", textAlign: "center" },
   card: { flexDirection: "row-reverse", alignItems: "center", backgroundColor: "rgba(124,58,237,0.12)", borderRadius: 14, padding: 14, gap: 12, borderWidth: 1, borderColor: "rgba(124,58,237,0.22)" },
-  iconBox: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  iconBox: { width: 42, height: 42, borderRadius: 12, backgroundColor: "#d4a01722", alignItems: "center", justifyContent: "center" },
   thumb: { width: 42, height: 42, borderRadius: 10 },
   info: { flex: 1, alignItems: "flex-end", gap: 2 },
-  itemTitle: { fontFamily: "Cairo_600SemiBold", fontSize: 14, color: "#e2e8f0" },
-  itemType: { fontFamily: "Cairo_400Regular", fontSize: 11, color: "#64748b" },
-  deleteBtn: { width: 34, height: 34, alignItems: "center", justifyContent: "center" },
-  openBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
-  contentPreview: { fontFamily: "Cairo_400Regular", fontSize: 11, color: "#64748b", textAlign: "right" },
-  addBtn: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 14, borderWidth: 1, borderColor: "#d4a01740", borderStyle: "dashed", paddingVertical: 14, backgroundColor: "#d4a01710", marginTop: 4 },
-  addBtnText: { fontFamily: "Cairo_600SemiBold", fontSize: 14, color: "#d4a017" },
-  addOptions: { flexDirection: "row-reverse", gap: 12, marginBottom: 16 },
-  optionBtn: { flex: 1, alignItems: "center", gap: 8, backgroundColor: "rgba(124,58,237,0.08)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(124,58,237,0.22)", paddingVertical: 16 },
-  optionIcon: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  optionLabel: { fontFamily: "Cairo_600SemiBold", fontSize: 13, color: "#e2e8f0" },
+  itemTitle: { fontFamily: "Cairo_600SemiBold", fontSize: 14, color: "#e2e8f0", textAlign: "right" },
+  amount: { fontFamily: "Cairo_700Bold", fontSize: 13, color: "#d4a017" },
+  date: { fontFamily: "Cairo_400Regular", fontSize: 11, color: "#64748b" },
+  openBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+  contentBox: { backgroundColor: "rgba(212,160,23,0.08)", borderRadius: 14, borderWidth: 1, borderColor: "#d4a01740", padding: 14, gap: 8 },
+  contentTitle: { fontFamily: "Cairo_700Bold", fontSize: 13, color: "#d4a017", textAlign: "right" },
+  contentText: { fontFamily: "Cairo_400Regular", fontSize: 14, color: "#e2e8f0", textAlign: "right", lineHeight: 22 },
 });
 
 export function NotificationsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {

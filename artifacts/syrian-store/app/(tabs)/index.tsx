@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { GoldenFrame } from "@/components/GoldenFrame";
-import { ProfileModal, SecurityModal, CartModal, ContactModal } from "@/components/DrawerModals";
+import { ProfileModal, SecurityModal, PurchasesModal, ContactModal } from "@/components/DrawerModals";
 
 type Tool = { id: number; title: string; color: string; url?: string | null; isActive: boolean; imageUrl?: string | null; description?: string | null; [k: string]: unknown };
 
@@ -43,8 +43,9 @@ function ProfileDrawer({
 
   const [showProfile, setShowProfile] = useState(false);
   const [showSecurity, setShowSecurity] = useState(false);
-  const [showCart, setShowCart] = useState(false);
+  const [showPurchases, setShowPurchases] = useState(false);
   const [showContact, setShowContact] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const openModal = (setter: (v: boolean) => void) => {
     onClose();
@@ -54,17 +55,20 @@ function ProfileDrawer({
   const balanceAmount = user ? Number(user.balance).toLocaleString("ar-SY") : "0";
 
   const handleLogout = () => {
-    Alert.alert("تسجيل الخروج", "هل تريد تسجيل الخروج من الحساب؟", [
-      { text: "إلغاء", style: "cancel" },
-      { text: "خروج", style: "destructive", onPress: async () => { onClose(); await logout(); } },
-    ]);
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = async () => {
+    setShowLogoutConfirm(false);
+    onClose();
+    await logout();
   };
 
   const menuItems: { icon: React.ComponentProps<typeof Feather>["name"]; label: string; onPress?: () => void; iconBg?: string }[] = [
     { icon: "user", label: "الملف الشخصي", iconBg: "rgba(124,58,237,0.22)", onPress: () => openModal(setShowProfile) },
     { icon: "shield", label: "الأمان والحساب", iconBg: "rgba(124,58,237,0.22)", onPress: () => openModal(setShowSecurity) },
     { icon: "credit-card", label: "الشحن والدفع", iconBg: "rgba(124,58,237,0.22)", onPress: onRecharge },
-    { icon: "shopping-cart", label: "السلة", iconBg: "#1a3d2e", onPress: () => openModal(setShowCart) },
+    { icon: "package", label: "مشترياتي", iconBg: "#1a3d2e", onPress: () => openModal(setShowPurchases) },
     { icon: "bell", label: "الإشعارات", iconBg: "rgba(124,58,237,0.22)", onPress: () => { onClose(); onNotifications(); } },
     { icon: "message-circle", label: "تواصل معنا", iconBg: "rgba(124,58,237,0.22)", onPress: () => openModal(setShowContact) },
   ];
@@ -125,9 +129,30 @@ function ProfileDrawer({
           </View>
         </View>
       </Modal>
+
+      {/* Logout confirm modal — works on both web and native */}
+      <Modal visible={showLogoutConfirm} transparent animationType="fade" onRequestClose={() => setShowLogoutConfirm(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.7)", alignItems: "center", justifyContent: "center", padding: 32 }}>
+          <View style={{ backgroundColor: "#0d0028", borderRadius: 20, padding: 24, width: "100%", borderWidth: 1, borderColor: "rgba(239,68,68,0.3)", gap: 16 }}>
+            <Text style={{ fontFamily: "Cairo_700Bold", fontSize: 18, color: "#f8fafc", textAlign: "center" }}>تسجيل الخروج</Text>
+            <Text style={{ fontFamily: "Cairo_400Regular", fontSize: 14, color: "#94a3b8", textAlign: "center" }}>هل تريد تسجيل الخروج من الحساب؟</Text>
+            <View style={{ flexDirection: "row-reverse", gap: 10 }}>
+              <TouchableOpacity onPress={confirmLogout} activeOpacity={0.85}
+                style={{ flex: 1, backgroundColor: "#ef4444", borderRadius: 12, paddingVertical: 13, alignItems: "center" }}>
+                <Text style={{ fontFamily: "Cairo_700Bold", fontSize: 15, color: "#fff" }}>خروج</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowLogoutConfirm(false)} activeOpacity={0.85}
+                style={{ flex: 1, backgroundColor: "rgba(124,58,237,0.15)", borderRadius: 12, paddingVertical: 13, alignItems: "center", borderWidth: 1, borderColor: "rgba(124,58,237,0.3)" }}>
+                <Text style={{ fontFamily: "Cairo_600SemiBold", fontSize: 15, color: "#94a3b8" }}>إلغاء</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <ProfileModal visible={showProfile} onClose={() => setShowProfile(false)} />
       <SecurityModal visible={showSecurity} onClose={() => setShowSecurity(false)} onLoggedOut={() => router.replace("/login")} />
-      <CartModal visible={showCart} onClose={() => setShowCart(false)} />
+      <PurchasesModal visible={showPurchases} onClose={() => setShowPurchases(false)} />
       <ContactModal visible={showContact} onClose={() => setShowContact(false)} />
     </>
   );
