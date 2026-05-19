@@ -1,13 +1,15 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 const STORAGE_KEY = "@alsouri_user";
 const ADMIN_STORAGE_KEY = "@alsouri_is_admin";
 const TOKEN_STORAGE_KEY = "@alsouri_token";
 
+const PROD_API = "https://alsouri-maak-api.onrender.com";
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-  : "";
+  : Platform.OS !== "web" ? PROD_API : "";
 
 export type UserAuthResponse = {
   id: number;
