@@ -17,10 +17,11 @@ import * as DocumentPicker from "expo-document-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 
-const API_BASE = (() => {
-  const d = process.env.EXPO_PUBLIC_DOMAIN ?? "";
-  return d ? `https://${d}` : "";
-})();
+import { Platform } from "react-native";
+const PROD_API = "https://alsouri-maak-api.onrender.com";
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+  : Platform.OS !== "web" ? PROD_API : "";
 
 async function apiCall(path: string, method = "GET", body?: object, token?: string | null) {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
