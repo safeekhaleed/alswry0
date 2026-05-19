@@ -20,6 +20,11 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 const _domain = process.env.EXPO_PUBLIC_DOMAIN;
 if (_domain) {
   setBaseUrl(`https://${_domain}`);
+} else {
+  console.error(
+    "[Config] EXPO_PUBLIC_DOMAIN is not set — API calls will fail. " +
+    "For EAS builds, run: eas secret:create --scope project --name EXPO_PUBLIC_DOMAIN --value <your-domain>"
+  );
 }
 
 if (Platform.OS !== "web") {
@@ -117,8 +122,10 @@ function RootLayoutNav() {
     let responseSub: { remove: () => void } | null = null;
 
     import("expo-notifications").then((Notifications) => {
-      receivedSub = Notifications.addNotificationReceivedListener(() => {});
-      responseSub = Notifications.addNotificationResponseReceivedListener(() => {});
+      receivedSub = Notifications.addNotificationReceivedListener(() => {
+      });
+      responseSub = Notifications.addNotificationResponseReceivedListener(() => {
+      });
     });
 
     return () => {

@@ -8,6 +8,7 @@ import {
   Clipboard,
   Dimensions,
   Image,
+  Linking,
   Modal,
   Platform,
   RefreshControl,
@@ -20,12 +21,12 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useGetPlatformStats, useListTools } from "@workspace/api-client-react";
+import type { Tool } from "@workspace/api-client-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { ProfileModal, SecurityModal, CartModal, ContactModal } from "@/components/DrawerModals";
-
-type Tool = { id: number; title: string; color: string; url?: string | null; isActive: boolean; imageUrl?: string | null; description?: string | null; [k: string]: unknown };
 
 function ProfileDrawer({
   visible,
@@ -38,6 +39,7 @@ function ProfileDrawer({
   onRecharge: () => void;
   onNotifications: () => void;
 }) {
+  const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user, isAdmin, logout } = useAuth();
 
@@ -56,7 +58,14 @@ function ProfileDrawer({
   const handleLogout = () => {
     Alert.alert("تسجيل الخروج", "هل تريد تسجيل الخروج من الحساب؟", [
       { text: "إلغاء", style: "cancel" },
-      { text: "خروج", style: "destructive", onPress: async () => { onClose(); await logout(); } },
+      {
+        text: "خروج",
+        style: "destructive",
+        onPress: async () => {
+          onClose();
+          await logout();
+        },
+      },
     ]);
   };
 
@@ -83,100 +92,217 @@ function ProfileDrawer({
 
   return (
     <>
-      <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-        <View style={dStyles.root}>
-          <TouchableOpacity style={dStyles.overlay} activeOpacity={1} onPress={onClose} />
-          <View style={[dStyles.panel, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16 }]}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={dStyles.scroll}>
-              <View style={dStyles.avatarWrap}>
-                <View style={dStyles.avatarRing}>
-                  <View style={dStyles.avatarInner}>
-                    <Text style={dStyles.avatarInitial}>{initial}</Text>
-                  </View>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={dStyles.root}>
+        <TouchableOpacity style={dStyles.overlay} activeOpacity={1} onPress={onClose} />
+        <View style={[dStyles.panel, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16 }]}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={dStyles.scroll}>
+
+            {/* Avatar */}
+            <View style={dStyles.avatarWrap}>
+              <View style={dStyles.avatarRing}>
+                <View style={dStyles.avatarInner}>
+                  <Text style={dStyles.avatarInitial}>{initial}</Text>
                 </View>
-                {(user as any)?.isVip && (
-                  <View style={dStyles.vipBadge}>
-                    <Text style={dStyles.vipText}>VIP</Text>
-                  </View>
-                )}
               </View>
-              <Text style={dStyles.username} numberOfLines={1}>{user?.username ?? "مستخدم المنصة"}</Text>
-              <View style={dStyles.balanceCard}>
-                <Text style={dStyles.balanceAmount}>{balanceAmount}$</Text>
-                <Text style={dStyles.balanceLabel}>رصيدك</Text>
-              </View>
-              {accountId ? <Text style={dStyles.accountId}>معزز الحساب: {accountId}</Text> : null}
-              <View style={dStyles.separator} />
-              {menuItems.map((item) => (
-                <TouchableOpacity key={item.label} style={dStyles.menuCard} activeOpacity={0.75} onPress={item.onPress}>
-                  <View style={[dStyles.menuIconBox, { backgroundColor: item.iconBg ?? "rgba(124,58,237,0.22)" }]}>
-                    <Feather name={item.icon} size={17} color="#d4a017" />
-                  </View>
-                  <Text style={dStyles.menuLabel}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity style={dStyles.logoutCard} onPress={handleLogout} activeOpacity={0.8}>
-                <View style={[dStyles.menuIconBox, { backgroundColor: "#3d1515" }]}>
-                  <Feather name="log-out" size={17} color="#ef4444" />
+              {user?.isVip && (
+                <View style={dStyles.vipBadge}>
+                  <Text style={dStyles.vipText}>VIP</Text>
                 </View>
-                <Text style={dStyles.logoutLabel}>تسجيل الخروج</Text>
+              )}
+            </View>
+
+            {/* Username */}
+            <Text style={dStyles.username} numberOfLines={1}>
+              {user?.username ?? "مستخدم المنصة"}
+            </Text>
+
+            {/* Balance card */}
+            <View style={dStyles.balanceCard}>
+              <Text style={dStyles.balanceAmount}>{balanceAmount}$</Text>
+              <Text style={dStyles.balanceLabel}>رصيدك</Text>
+            </View>
+
+            {/* Account ID */}
+            {accountId ? (
+              <Text style={dStyles.accountId}>معزز الحساب: {accountId}</Text>
+            ) : null}
+
+            {/* Separator */}
+            <View style={dStyles.separator} />
+
+            {/* Menu items */}
+            {menuItems.map((item) => (
+              <TouchableOpacity
+                key={item.label}
+                style={dStyles.menuCard}
+                activeOpacity={0.75}
+                onPress={item.onPress ?? undefined}
+              >
+                <View style={[dStyles.menuIconBox, { backgroundColor: item.iconBg ?? "rgba(124,58,237,0.22)" }]}>
+                  <Feather name={item.icon} size={17} color="#d4a017" />
+                </View>
+                <Text style={dStyles.menuLabel}>{item.label}</Text>
               </TouchableOpacity>
-            </ScrollView>
-          </View>
+            ))}
+
+            {/* Logout */}
+            <TouchableOpacity style={dStyles.logoutCard} onPress={handleLogout} activeOpacity={0.8}>
+              <View style={[dStyles.menuIconBox, { backgroundColor: "#3d1515" }]}>
+                <Feather name="log-out" size={17} color="#ef4444" />
+              </View>
+              <Text style={dStyles.logoutLabel}>تسجيل الخروج</Text>
+            </TouchableOpacity>
+
+          </ScrollView>
         </View>
-      </Modal>
-      <ProfileModal visible={showProfile} onClose={() => setShowProfile(false)} />
-      <SecurityModal visible={showSecurity} onClose={() => setShowSecurity(false)} onLoggedOut={() => router.replace("/login")} />
-      <CartModal visible={showCart} onClose={() => setShowCart(false)} />
-      <ContactModal visible={showContact} onClose={() => setShowContact(false)} />
-    </>
+      </View>
+    </Modal>
+
+    <ProfileModal visible={showProfile} onClose={() => setShowProfile(false)} />
+    <SecurityModal visible={showSecurity} onClose={() => setShowSecurity(false)} onLoggedOut={() => router.replace("/login")} />
+    <CartModal visible={showCart} onClose={() => setShowCart(false)} />
+    <ContactModal visible={showContact} onClose={() => setShowContact(false)} />
+  </>
   );
 }
 
 const dStyles = StyleSheet.create({
   root: { flex: 1, flexDirection: "row-reverse" },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)" },
-  panel: { width: "82%", backgroundColor: "#0d0028", paddingHorizontal: 18, borderRightWidth: 1, borderRightColor: "rgba(124,58,237,0.25)" },
+  panel: {
+    width: "82%",
+    backgroundColor: "#0d0028",
+    paddingHorizontal: 18,
+    borderRightWidth: 1,
+    borderRightColor: "rgba(124,58,237,0.25)",
+  },
   scroll: { gap: 10 },
   avatarWrap: { alignItems: "center", paddingTop: 8, gap: 8 },
-  avatarRing: { width: 96, height: 96, borderRadius: 48, borderWidth: 2.5, borderColor: "#d4a017", alignItems: "center", justifyContent: "center" },
-  avatarInner: { width: 84, height: 84, borderRadius: 42, backgroundColor: "#1a0040", alignItems: "center", justifyContent: "center" },
+  avatarRing: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 2.5,
+    borderColor: "#d4a017",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarInner: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: "#1a0040",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   avatarInitial: { fontFamily: "Cairo_700Bold", fontSize: 32, color: "#d4a017" },
-  vipBadge: { backgroundColor: "#d4a017", borderRadius: 999, paddingHorizontal: 16, paddingVertical: 4 },
+  vipBadge: {
+    backgroundColor: "#d4a017",
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+  },
   vipText: { fontFamily: "Cairo_700Bold", fontSize: 12, color: "#0a001a" },
-  username: { fontFamily: "Cairo_700Bold", fontSize: 22, color: "#f8fafc", textAlign: "center", marginTop: 4 },
-  balanceCard: { backgroundColor: "rgba(124,58,237,0.15)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(124,58,237,0.3)", paddingHorizontal: 18, paddingVertical: 14, flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center", marginTop: 4 },
+  username: {
+    fontFamily: "Cairo_700Bold",
+    fontSize: 22,
+    color: "#f8fafc",
+    textAlign: "center",
+    marginTop: 4,
+  },
+  balanceCard: {
+    backgroundColor: "rgba(124,58,237,0.15)",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(124,58,237,0.3)",
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    flexDirection: "row-reverse",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 4,
+  },
   balanceLabel: { fontFamily: "Cairo_400Regular", fontSize: 14, color: "#8b7bb8" },
   balanceAmount: { fontFamily: "Cairo_700Bold", fontSize: 20, color: "#d4a017" },
-  accountId: { fontFamily: "Cairo_400Regular", fontSize: 12, color: "#6b5b8a", textAlign: "center", marginTop: -2 },
+  accountId: {
+    fontFamily: "Cairo_400Regular",
+    fontSize: 12,
+    color: "#6b5b8a",
+    textAlign: "center",
+    marginTop: -2,
+  },
   separator: { height: 1, backgroundColor: "rgba(124,58,237,0.2)", marginVertical: 6 },
-  menuCard: { backgroundColor: "rgba(124,58,237,0.1)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(124,58,237,0.2)", flexDirection: "row-reverse", alignItems: "center", paddingHorizontal: 14, paddingVertical: 14, gap: 14 },
-  menuIconBox: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  menuLabel: { flex: 1, fontFamily: "Cairo_600SemiBold", fontSize: 15, color: "#e2e8f0", textAlign: "right" },
-  logoutCard: { backgroundColor: "rgba(127,29,29,0.2)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(239,68,68,0.2)", flexDirection: "row-reverse", alignItems: "center", paddingHorizontal: 14, paddingVertical: 14, gap: 14, marginTop: 4 },
-  logoutLabel: { flex: 1, fontFamily: "Cairo_700Bold", fontSize: 15, color: "#ef4444", textAlign: "right" },
+  menuCard: {
+    backgroundColor: "rgba(124,58,237,0.1)",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(124,58,237,0.2)",
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 14,
+  },
+  menuIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuLabel: {
+    flex: 1,
+    fontFamily: "Cairo_600SemiBold",
+    fontSize: 15,
+    color: "#e2e8f0",
+    textAlign: "right",
+  },
+  logoutCard: {
+    backgroundColor: "rgba(127,29,29,0.2)",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(239,68,68,0.2)",
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 14,
+    marginTop: 4,
+  },
+  logoutLabel: {
+    flex: 1,
+    fontFamily: "Cairo_700Bold",
+    fontSize: 15,
+    color: "#ef4444",
+    textAlign: "right",
+  },
 });
 
 function ToolCard({ tool }: { tool: Tool }) {
   const colors = useColors();
   const handlePress = async () => {
     if (tool.url) {
-      const { Linking } = await import("react-native");
       try {
-        if (await Linking.canOpenURL(tool.url)) { Linking.openURL(tool.url); return; }
-      } catch { }
+        const canOpen = await Linking.canOpenURL(tool.url);
+        if (canOpen) { Linking.openURL(tool.url); return; }
+      } catch { /* ignore */ }
     }
     router.push(`/tool/${tool.id}`);
   };
   const cardColor = tool.color || "#7c3aed";
   return (
-    <TouchableOpacity style={[styles.toolCard, { borderColor: cardColor + "50", backgroundColor: cardColor + "14" }]} activeOpacity={0.8} onPress={handlePress}>
+    <TouchableOpacity
+      style={[styles.toolCard, { borderColor: cardColor + "50", backgroundColor: cardColor + "14" }]}
+      activeOpacity={0.8}
+      onPress={handlePress}
+    >
       <View style={[styles.toolCardGlow, { backgroundColor: cardColor + "30" }]} />
       <Text style={[styles.toolSparkle1, { color: cardColor }]}>✦</Text>
       <Text style={[styles.toolSparkle2, { color: cardColor }]}>✦</Text>
       <View style={styles.toolCardIconWrap}>
-        {(tool as any).imageUrl ? (
-          <Image source={{ uri: (tool as any).imageUrl }} style={styles.toolCardImage} resizeMode="cover" />
+        {tool.imageUrl ? (
+          <Image source={{ uri: tool.imageUrl }} style={styles.toolCardImage} resizeMode="cover" />
         ) : (
           <View style={[styles.toolCardIcon, { backgroundColor: cardColor + "35", borderColor: cardColor + "70" }]}>
             <Feather name="tool" size={24} color={cardColor} />
@@ -197,7 +323,11 @@ function ToolCard({ tool }: { tool: Tool }) {
 function EmptyToolCard() {
   const colors = useColors();
   return (
-    <TouchableOpacity style={[styles.toolCard, { borderColor: colors.border, borderStyle: "dashed", backgroundColor: "rgba(124,58,237,0.06)" }]} activeOpacity={0.7} onPress={() => router.push("/(tabs)/tools")}>
+    <TouchableOpacity
+      style={[styles.toolCard, { borderColor: colors.border, borderStyle: "dashed", backgroundColor: "rgba(124,58,237,0.06)" }]}
+      activeOpacity={0.7}
+      onPress={() => router.push("/tools")}
+    >
       <View style={styles.toolCardIconWrap}>
         <View style={[styles.toolCardIcon, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
           <Feather name="plus" size={22} color={colors.mutedForeground} />
@@ -226,22 +356,9 @@ export default function HomeScreen() {
   const isWeb = Platform.OS === "web";
   const topInset = isWeb ? 67 : insets.top;
 
-  const [stats, setStats] = React.useState<any>(null);
-  const [allTools, setAllTools] = React.useState<Tool[]>([]);
+  const { data: stats, refetch: refetchStats } = useGetPlatformStats();
+  const { data: allTools, refetch: refetchTools } = useListTools();
   const { user, isAdmin } = useAuth();
-
-  const apiDomain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
-  const apiBase2 = apiDomain ? `https://${apiDomain}` : "";
-
-  const refetchStats = React.useCallback(async () => {
-    try { const r = await fetch(`${apiBase2}/api/stats`); if (r.ok) setStats(await r.json()); } catch { }
-  }, [apiBase2]);
-
-  const refetchTools = React.useCallback(async () => {
-    try { const r = await fetch(`${apiBase2}/api/tools`); if (r.ok) setAllTools(await r.json()); } catch { }
-  }, [apiBase2]);
-
-  useEffect(() => { refetchStats(); refetchTools(); }, [refetchStats, refetchTools]);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [rechargeOpen, setRechargeOpen] = React.useState(false);
@@ -256,6 +373,7 @@ export default function HomeScreen() {
   const [titleTimer, setTitleTimer] = React.useState<ReturnType<typeof setTimeout> | null>(null);
   const [titleInterval, setTitleInterval] = React.useState<ReturnType<typeof setInterval> | null>(null);
 
+  // ── unread notifications count ────────────────────────────────────────────
   const fetchUnreadCount = React.useCallback(async () => {
     if (!user) { setUnreadCount(0); return; }
     try {
@@ -266,15 +384,19 @@ export default function HomeScreen() {
         const { count } = await res.json() as { count: number };
         setUnreadCount(count);
       }
-    } catch { }
+    } catch { /* ignore */ }
   }, [user]);
 
   useEffect(() => { fetchUnreadCount(); }, [fetchUnreadCount]);
-  useFocusEffect(React.useCallback(() => { fetchUnreadCount(); }, [fetchUnreadCount]));
 
+  useFocusEffect(React.useCallback(() => { fetchUnreadCount(); }, [fetchUnreadCount]));
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── banners carousel ──────────────────────────────────────────────────────
   const [banners, setBanners] = useState<any[]>([]);
   const [bannerIdx, setBannerIdx] = useState(0);
   const carouselRef = useRef<ScrollView>(null);
+  const bannerTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const screenWidth = Dimensions.get("window").width;
 
   const fetchBanners = async () => {
@@ -283,22 +405,23 @@ export default function HomeScreen() {
       const base = domain ? `https://${domain}` : "";
       const res = await fetch(`${base}/api/banners`);
       if (res.ok) setBanners(await res.json());
-    } catch { }
+    } catch { /* ignore */ }
   };
 
   useEffect(() => { fetchBanners(); }, []);
 
   useEffect(() => {
     if (banners.length < 2) return;
-    const timer = setInterval(() => {
+    bannerTimer.current = setInterval(() => {
       setBannerIdx((prev) => {
         const next = (prev + 1) % banners.length;
-        carouselRef.current?.scrollTo({ x: next * (screenWidth - 32), animated: true });
+        carouselRef.current?.scrollTo({ x: next * screenWidth, animated: true });
         return next;
       });
     }, 3500);
-    return () => clearInterval(timer);
+    return () => { if (bannerTimer.current) clearInterval(bannerTimer.current); };
   }, [banners, screenWidth]);
+  // ─────────────────────────────────────────────────────────────────────────
 
   const tools = (allTools ?? []).filter((t) => t.isActive).slice(0, 4);
   const toolSlots = [...tools];
@@ -314,66 +437,118 @@ export default function HomeScreen() {
     { key: "binance" as const, label: "بينانس", icon: "trending-up" as const, color: "#f59e0b", id: "63078113" },
     { key: "usdt" as const, label: "USDT", icon: "circle" as const, color: "#22d3ee", id: "TLqiL3ZtuCUYA78UM9HEPJZV1fAch69KKa" },
   ];
+
   const selectedOption = PAYMENT_OPTIONS.find((o) => o.key === paymentMethod);
 
   const closeRecharge = () => {
-    setRechargeOpen(false); setRechargeStep(1); setSelectedAmount(null);
-    setPaymentMethod(null); setTransactionId(""); setTransferImage("");
+    setRechargeOpen(false);
+    setRechargeStep(1);
+    setSelectedAmount(null);
+    setPaymentMethod(null);
+    setTransactionId("");
+    setTransferImage("");
   };
 
   const pickTransferImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") { Alert.alert("إذن مطلوب", "يرجى السماح بالوصول إلى معرض الصور."); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: false, quality: 0.8 });
-    if (!result.canceled) setTransferImage(result.assets[0].uri);
+    if (status !== "granted") {
+      Alert.alert("إذن مطلوب", "يرجى السماح بالوصول إلى معرض الصور.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      setTransferImage(result.assets[0].uri);
+    }
   };
 
   const submitRecharge = async () => {
-    if (!selectedAmount) { Alert.alert("مطلوب", "اختر المبلغ المراد شحنه."); return; }
-    if (!transactionId.trim()) { Alert.alert("مطلوب", "أدخل معرف المعاملة."); return; }
-    if (!transferImage.trim()) { Alert.alert("مطلوب", "أرفق صورة التحويل."); return; }
+    if (!selectedAmount) {
+      Alert.alert("مطلوب", "اختر المبلغ المراد شحنه.");
+      return;
+    }
+    if (!transactionId.trim()) {
+      Alert.alert("مطلوب", "أدخل معرف المعاملة.");
+      return;
+    }
+    if (!transferImage.trim()) {
+      Alert.alert("مطلوب", "أرفق صورة التحويل.");
+      return;
+    }
     setSubmitting(true);
     try {
       const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
       const apiBase = domain ? `https://${domain}` : "";
       await fetch(`${apiBase}/api/recharge-requests`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ paymentMethod: selectedOption?.label ?? paymentMethod, transactionId: transactionId.trim(), transferImageUrl: transferImage.trim(), amount: selectedAmount }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          paymentMethod: selectedOption?.label ?? paymentMethod,
+          transactionId: transactionId.trim(),
+          transferImageUrl: transferImage.trim(),
+          amount: selectedAmount,
+        }),
       });
       Alert.alert("تم الإرسال ✓", "سيتم مراجعة طلب الشحن من قبل الإدارة وإشعارك قريباً.");
       closeRecharge();
-    } catch { Alert.alert("خطأ", "تعذّر إرسال الطلب، حاول مجدداً."); }
-    finally { setSubmitting(false); }
+    } catch {
+      Alert.alert("خطأ", "تعذّر إرسال الطلب، حاول مجدداً.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const startTitleHold = () => {
     if (titleTimer || titleInterval) return;
     let elapsed = 0;
-    const interval = setInterval(() => { elapsed += 100; setTitleHold(Math.min(elapsed / 7000, 1)); }, 100);
-    const timer = setTimeout(() => { clearInterval(interval); setTitleHold(1); router.push("/admin"); }, 7000);
-    setTitleTimer(timer); setTitleInterval(interval);
+    const interval = setInterval(() => {
+      elapsed += 100;
+      setTitleHold(Math.min(elapsed / 7000, 1));
+    }, 100);
+    const timer = setTimeout(() => {
+      clearInterval(interval);
+      setTitleHold(1);
+      router.push("/admin");
+    }, 7000);
+    setTitleTimer(timer);
+    setTitleInterval(interval);
   };
 
   const cancelTitleHold = () => {
     if (titleTimer) clearTimeout(titleTimer);
     if (titleInterval) clearInterval(titleInterval);
-    setTitleTimer(null); setTitleInterval(null); setTitleHold(0);
+    setTitleTimer(null);
+    setTitleInterval(null);
+    setTitleHold(0);
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: topInset, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}> 
+      <View style={[styles.header, { paddingTop: topInset, backgroundColor: colors.background, borderBottomColor: colors.border }]}> 
         <View style={styles.headerInner}>
-          <TouchableOpacity activeOpacity={0.9} onPressIn={startTitleHold} onPressOut={cancelTitleHold} style={styles.titleWrap}>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPressIn={startTitleHold}
+            onPressOut={cancelTitleHold}
+            style={styles.titleWrap}
+          >
             <Text style={[styles.headerTitle, { color: colors.primary }]}>السوري معك</Text>
             <Text style={[styles.headerSubtitle, { color: colors.accent }]}>منصتك الذكية</Text>
             {titleHold > 0 && (
               <View style={[styles.holdBar, { borderColor: colors.border }]}>
-                <View style={[styles.holdFill, { width: `${Math.round(titleHold * 100)}%` as any, backgroundColor: colors.primary }]} />
+                <View style={[styles.holdFill, { width: `${Math.round(titleHold * 100)}%`, backgroundColor: colors.primary }]} />
               </View>
             )}
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.menuBtn, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => setMenuOpen(true)} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={[styles.menuBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => setMenuOpen(true)}
+            activeOpacity={0.85}
+          >
             <Feather name="menu" size={20} color={colors.foreground} />
             {unreadCount > 0 && (
               <View style={styles.menuBadge}>
@@ -385,27 +560,45 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: isWeb ? 34 + 96 : 112 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: isWeb ? 34 + 96 : 112 },
+        ]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+        }
       >
         {banners.length > 0 ? (
           <View style={styles.carouselWrap}>
             <ScrollView
               ref={carouselRef}
-              horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
               scrollEventThrottle={16}
-              onMomentumScrollEnd={(e) => setBannerIdx(Math.round(e.nativeEvent.contentOffset.x / (screenWidth - 32)))}
+              onMomentumScrollEnd={(e) => {
+                const idx = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+                setBannerIdx(idx);
+              }}
               style={{ width: screenWidth - 32 }}
             >
-              {banners.map((b) => (
-                <Image key={b.id} source={{ uri: b.imageUrl }} style={{ width: screenWidth - 32, height: 160, borderRadius: 16 }} resizeMode="cover" />
+              {banners.map((b, i) => (
+                <Image
+                  key={b.id}
+                  source={{ uri: b.imageUrl }}
+                  style={{ width: screenWidth - 32, height: 160, borderRadius: 16 }}
+                  resizeMode="cover"
+                />
               ))}
             </ScrollView>
             {banners.length > 1 && (
               <View style={styles.carouselDots}>
                 {banners.map((_, i) => (
-                  <View key={i} style={[styles.carouselDot, { backgroundColor: i === bannerIdx ? colors.primary : colors.border }]} />
+                  <View
+                    key={i}
+                    style={[styles.carouselDot, { backgroundColor: i === bannerIdx ? colors.primary : colors.border }]}
+                  />
                 ))}
               </View>
             )}
@@ -414,11 +607,18 @@ export default function HomeScreen() {
             </Text>
           </View>
         ) : (
-          <LinearGradient colors={["#1e0850", "#0d0028"]} style={styles.welcomeBanner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <LinearGradient
+            colors={["#1e0850", "#0d0028"]}
+            style={styles.welcomeBanner}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
             <View style={styles.bannerDecorCircle1} />
             <View style={styles.bannerDecorCircle2} />
             <View style={styles.bannerDots}>
-              {[0, 1, 2].map((i) => <View key={i} style={[styles.bannerDot, i === 0 ? { backgroundColor: "#7c3aed", width: 18 } : {}]} />)}
+              {[0, 1, 2].map((i) => (
+                <View key={i} style={[styles.bannerDot, i === 0 ? { backgroundColor: "#7c3aed", width: 18 } : {}]} />
+              ))}
             </View>
             <View style={styles.bannerContent}>
               <View style={styles.bannerText}>
@@ -444,7 +644,11 @@ export default function HomeScreen() {
           </View>
           <View style={styles.toolsGrid}>
             {toolSlots.map((tool, i) =>
-              tool ? <ToolCard key={tool.id} tool={tool} /> : <EmptyToolCard key={`empty-${i}`} />
+              tool ? (
+                <ToolCard key={tool.id} tool={tool} />
+              ) : (
+                <EmptyToolCard key={`empty-${i}`} />
+              )
             )}
           </View>
         </View>
@@ -455,8 +659,8 @@ export default function HomeScreen() {
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>إحصائيات المنصة</Text>
           </View>
           <View style={styles.statsGrid}>
-            <StatCard icon="users" label="المستخدمين" value={(stats as any)?.totalUsers} color="#818cf8" />
-            <StatCard icon="tool" label="الأدوات" value={(stats as any)?.totalTools} color="#34d399" />
+            <StatCard icon="users" label="المستخدمين" value={stats?.totalUsers} color="#818cf8" />
+            <StatCard icon="tool" label="الأدوات" value={stats?.totalTools} color="#34d399" />
             <StatCard icon="shield" label="موثوقة" value="98%" color="#4ade80" />
             <StatCard icon="clock" label="متاح دائماً" value="24/7" color="#fb923c" />
           </View>
@@ -466,39 +670,61 @@ export default function HomeScreen() {
       <ProfileDrawer
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
-        onRecharge={() => { setMenuOpen(false); setTimeout(() => setRechargeOpen(true), 250); }}
-        onNotifications={() => { setTimeout(() => router.push("/(tabs)/notifications"), 300); }}
+        onRecharge={() => {
+          setMenuOpen(false);
+          setTimeout(() => setRechargeOpen(true), 250);
+        }}
+        onNotifications={() => {
+          setTimeout(() => router.push("/(tabs)/notifications"), 300);
+        }}
       />
 
       <Modal visible={rechargeOpen} transparent animationType="slide" onRequestClose={closeRecharge}>
         <View style={rStyles.backdrop}>
           <View style={[rStyles.sheet, { paddingBottom: insets.bottom + 16 }]}>
+            {/* Header */}
             <View style={rStyles.sheetHeader}>
               <TouchableOpacity onPress={closeRecharge} style={rStyles.closeBtn}>
                 <Feather name="x" size={20} color="#94a3b8" />
               </TouchableOpacity>
-              <Text style={rStyles.sheetTitle}>{rechargeStep === 1 ? "اختر طريقة الدفع" : "تأكيد التحويل"}</Text>
-              {rechargeStep === 2 ? (
+              <Text style={rStyles.sheetTitle}>
+                {rechargeStep === 1 ? "اختر طريقة الدفع" : "تأكيد التحويل"}
+              </Text>
+              {rechargeStep === 2 && (
                 <TouchableOpacity onPress={() => setRechargeStep(1)} style={rStyles.backBtn}>
                   <Feather name="arrow-right" size={20} color="#d4a017" />
                 </TouchableOpacity>
-              ) : <View style={{ width: 36 }} />}
+              )}
+              {rechargeStep === 1 && <View style={{ width: 36 }} />}
             </View>
 
+            {/* ── STEP 1: Choose method ── */}
             {rechargeStep === 1 && (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={rStyles.step}>
                 <Text style={rStyles.stepHint}>اختر المبلغ المراد شحنه</Text>
                 <View style={rStyles.amountGrid}>
                   {[5, 10, 25, 50, 100, 200].map((amt) => (
-                    <TouchableOpacity key={amt} style={[rStyles.amountBtn, selectedAmount === amt && rStyles.amountBtnSelected]} activeOpacity={0.8} onPress={() => setSelectedAmount(amt)}>
-                      <Text style={[rStyles.amountText, selectedAmount === amt && rStyles.amountTextSelected]}>${amt}</Text>
+                    <TouchableOpacity
+                      key={amt}
+                      style={[rStyles.amountBtn, selectedAmount === amt && rStyles.amountBtnSelected]}
+                      activeOpacity={0.8}
+                      onPress={() => setSelectedAmount(amt)}
+                    >
+                      <Text style={[rStyles.amountText, selectedAmount === amt && rStyles.amountTextSelected]}>
+                        ${amt}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
                 <View style={rStyles.separator2} />
                 <Text style={rStyles.stepHint}>اختر وسيلة الدفع للمتابعة</Text>
                 {PAYMENT_OPTIONS.map((opt) => (
-                  <TouchableOpacity key={opt.key} style={[rStyles.methodBtn, { borderColor: opt.color + "60" }]} activeOpacity={0.85} onPress={() => { setPaymentMethod(opt.key); setRechargeStep(2); }}>
+                  <TouchableOpacity
+                    key={opt.key}
+                    style={[rStyles.methodBtn, { borderColor: opt.color + "60" }]}
+                    activeOpacity={0.85}
+                    onPress={() => { setPaymentMethod(opt.key); setRechargeStep(2); }}
+                  >
                     <View style={[rStyles.methodIcon, { backgroundColor: opt.color + "22" }]}>
                       <Feather name={opt.icon} size={22} color={opt.color} />
                     </View>
@@ -509,13 +735,24 @@ export default function HomeScreen() {
               </ScrollView>
             )}
 
+            {/* ── STEP 2: ID copy + form ── */}
             {rechargeStep === 2 && selectedOption && (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={rStyles.step}>
+                {/* Payment ID card */}
                 <View style={[rStyles.idCard, { borderColor: selectedOption.color + "55" }]}>
                   <Text style={rStyles.idCardTitle}>أرسل المبلغ إلى هذا المعرف</Text>
                   <View style={rStyles.idRow}>
-                    <Text style={[rStyles.idValue, { color: selectedOption.color }]} selectable>{selectedOption.id}</Text>
-                    <TouchableOpacity style={[rStyles.copyBtn, { backgroundColor: selectedOption.color + "22", borderColor: selectedOption.color + "44" }]} activeOpacity={0.8} onPress={() => { Clipboard.setString(selectedOption.id); Alert.alert("تم النسخ ✓", "تم نسخ معرف الدفع."); }}>
+                    <Text style={[rStyles.idValue, { color: selectedOption.color }]} selectable>
+                      {selectedOption.id}
+                    </Text>
+                    <TouchableOpacity
+                      style={[rStyles.copyBtn, { backgroundColor: selectedOption.color + "22", borderColor: selectedOption.color + "44" }]}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        Clipboard.setString(selectedOption.id);
+                        Alert.alert("تم النسخ ✓", "تم نسخ معرف الدفع.");
+                      }}
+                    >
                       <Feather name="copy" size={15} color={selectedOption.color} />
                       <Text style={[rStyles.copyText, { color: selectedOption.color }]}>نسخ</Text>
                     </TouchableOpacity>
@@ -524,9 +761,20 @@ export default function HomeScreen() {
                     <Text style={[rStyles.methodBadgeText, { color: selectedOption.color }]}>{selectedOption.label}</Text>
                   </View>
                 </View>
+
                 <View style={rStyles.separator2} />
+
+                {/* Transaction ID */}
                 <Text style={rStyles.fieldLabel}>معرف المعاملة (Transaction ID)</Text>
-                <TextInput value={transactionId} onChangeText={setTransactionId} placeholder="أدخل معرف المعاملة بعد الإرسال" placeholderTextColor="#4b6280" style={rStyles.textInput} />
+                <TextInput
+                  value={transactionId}
+                  onChangeText={setTransactionId}
+                  placeholder="أدخل معرف المعاملة بعد الإرسال"
+                  placeholderTextColor="#4b6280"
+                  style={rStyles.textInput}
+                />
+
+                {/* Image upload */}
                 <Text style={rStyles.fieldLabel}>صورة التحويل</Text>
                 <TouchableOpacity style={rStyles.uploadBtn} activeOpacity={0.85} onPress={pickTransferImage}>
                   <Feather name="image" size={20} color={transferImage ? "#22d3ee" : "#64748b"} />
@@ -534,8 +782,16 @@ export default function HomeScreen() {
                     {transferImage ? "تم اختيار الصورة — اضغط للتغيير" : "اضغط لاختيار صورة التحويل"}
                   </Text>
                 </TouchableOpacity>
-                {transferImage ? <Image source={{ uri: transferImage }} style={rStyles.previewImage} resizeMode="cover" /> : null}
-                <TouchableOpacity style={[rStyles.submitBtn, submitting && { opacity: 0.6 }]} activeOpacity={0.85} onPress={submitRecharge} disabled={submitting}>
+                {transferImage ? (
+                  <Image source={{ uri: transferImage }} style={rStyles.previewImage} resizeMode="cover" />
+                ) : null}
+
+                <TouchableOpacity
+                  style={[rStyles.submitBtn, submitting && { opacity: 0.6 }]}
+                  activeOpacity={0.85}
+                  onPress={submitRecharge}
+                  disabled={submitting}
+                >
                   <Text style={rStyles.submitText}>{submitting ? "جاري الإرسال..." : "إرسال طلب الشحن"}</Text>
                 </TouchableOpacity>
               </ScrollView>
@@ -549,35 +805,111 @@ export default function HomeScreen() {
 
 const rStyles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: "#0d0028", borderTopLeftRadius: 28, borderTopRightRadius: 28, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderColor: "rgba(124,58,237,0.3)", paddingHorizontal: 18, paddingTop: 8, maxHeight: "90%" },
-  sheetHeader: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: "rgba(124,58,237,0.2)", marginBottom: 8 },
+  sheet: {
+    backgroundColor: "#0d0028",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: "rgba(124,58,237,0.3)",
+    paddingHorizontal: 18,
+    paddingTop: 8,
+    maxHeight: "90%",
+  },
+  sheetHeader: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(124,58,237,0.2)",
+    marginBottom: 8,
+  },
   sheetTitle: { fontFamily: "Cairo_700Bold", fontSize: 17, color: "#f8fafc", textAlign: "center", flex: 1 },
   closeBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
   backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
   step: { gap: 14, paddingBottom: 24 },
   stepHint: { fontFamily: "Cairo_400Regular", fontSize: 13, color: "#8b7bb8", textAlign: "center" },
-  methodBtn: { flexDirection: "row-reverse", alignItems: "center", backgroundColor: "rgba(124,58,237,0.08)", borderRadius: 18, borderWidth: 1, paddingHorizontal: 18, paddingVertical: 18, gap: 14 },
+  methodBtn: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    backgroundColor: "rgba(124,58,237,0.08)",
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    gap: 14,
+  },
   methodIcon: { width: 48, height: 48, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   methodLabel: { flex: 1, fontFamily: "Cairo_700Bold", fontSize: 18, textAlign: "right" },
-  idCard: { backgroundColor: "rgba(124,58,237,0.1)", borderRadius: 18, borderWidth: 1, padding: 16, gap: 12 },
+  idCard: {
+    backgroundColor: "rgba(124,58,237,0.1)",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(124,58,237,0.25)",
+    padding: 16,
+    gap: 12,
+  },
   idCardTitle: { fontFamily: "Cairo_600SemiBold", fontSize: 13, color: "#8b7bb8", textAlign: "right" },
   idRow: { flexDirection: "row-reverse", alignItems: "center", gap: 10 },
   idValue: { flex: 1, fontFamily: "Cairo_700Bold", fontSize: 13, textAlign: "right" },
-  copyBtn: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 10, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 7 },
+  copyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
   copyText: { fontFamily: "Cairo_600SemiBold", fontSize: 12 },
   methodBadge: { alignSelf: "flex-end", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
   methodBadgeText: { fontFamily: "Cairo_700Bold", fontSize: 11 },
   separator2: { height: 1, backgroundColor: "rgba(124,58,237,0.2)" },
   fieldLabel: { fontFamily: "Cairo_600SemiBold", fontSize: 14, color: "#cbd5e1", textAlign: "right" },
-  textInput: { backgroundColor: "rgba(124,58,237,0.08)", borderWidth: 1, borderColor: "rgba(124,58,237,0.25)", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 13, color: "#f8fafc", textAlign: "right", fontFamily: "Cairo_400Regular", fontSize: 14 },
-  uploadBtn: { flexDirection: "row-reverse", alignItems: "center", gap: 10, backgroundColor: "rgba(124,58,237,0.08)", borderWidth: 1, borderColor: "rgba(124,58,237,0.25)", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, borderStyle: "dashed" },
+  textInput: {
+    backgroundColor: "rgba(124,58,237,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(124,58,237,0.25)",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    color: "#f8fafc",
+    textAlign: "right",
+    fontFamily: "Cairo_400Regular",
+    fontSize: 14,
+  },
+  uploadBtn: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "rgba(124,58,237,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(124,58,237,0.25)",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderStyle: "dashed",
+  },
   uploadText: { fontFamily: "Cairo_400Regular", fontSize: 13, color: "#8b7bb8", flex: 1, textAlign: "right" },
   previewImage: { width: "100%", height: 160, borderRadius: 14 },
   submitBtn: { backgroundColor: "#d4a017", borderRadius: 16, paddingVertical: 16, alignItems: "center", marginTop: 4 },
   submitText: { fontFamily: "Cairo_700Bold", fontSize: 16, color: "#0a001a" },
   amountGrid: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 10 },
-  amountBtn: { width: "30%", paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: "rgba(124,58,237,0.25)", backgroundColor: "rgba(124,58,237,0.08)", alignItems: "center" },
-  amountBtnSelected: { borderColor: "#d4a017", backgroundColor: "rgba(212,160,23,0.15)" },
+  amountBtn: {
+    width: "30%",
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(124,58,237,0.25)",
+    backgroundColor: "rgba(124,58,237,0.08)",
+    alignItems: "center",
+  },
+  amountBtnSelected: {
+    borderColor: "#d4a017",
+    backgroundColor: "rgba(212,160,23,0.15)",
+  },
   amountText: { fontFamily: "Cairo_700Bold", fontSize: 16, color: "#8b7bb8" },
   amountTextSelected: { color: "#d4a017" },
 });
@@ -592,10 +924,32 @@ const styles = StyleSheet.create({
   holdBar: { width: 120, height: 4, borderRadius: 999, borderWidth: 1, overflow: "hidden" },
   holdFill: { height: "100%" },
   menuBtn: { width: 44, height: 44, borderRadius: 13, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  menuBadge: { position: "absolute", top: -5, right: -5, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: "#d4a017", alignItems: "center", justifyContent: "center", paddingHorizontal: 3, borderWidth: 1.5, borderColor: "#0a001a" },
+  menuBadge: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#d4a017",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: "#0a001a",
+  },
   menuBadgeText: { fontFamily: "Cairo_700Bold", fontSize: 10, color: "#0a001a", lineHeight: 14 },
   scrollContent: { paddingTop: 16, gap: 18 },
-  welcomeBanner: { marginHorizontal: 16, borderRadius: 24, padding: 24, overflow: "hidden", minHeight: 170, justifyContent: "space-between", borderWidth: 1, borderColor: "rgba(124,58,237,0.3)" },
+  welcomeBanner: {
+    marginHorizontal: 16,
+    borderRadius: 24,
+    padding: 24,
+    overflow: "hidden",
+    minHeight: 170,
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "rgba(124,58,237,0.3)",
+  },
   bannerDecorCircle1: { position: "absolute", top: -30, left: -30, width: 130, height: 130, borderRadius: 65, backgroundColor: "rgba(124,58,237,0.2)" },
   bannerDecorCircle2: { position: "absolute", bottom: -20, right: 30, width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(14,165,233,0.15)" },
   bannerContent: { flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center", flex: 1 },
@@ -630,4 +984,19 @@ const styles = StyleSheet.create({
   statCardBottomGlow: { position: "absolute", bottom: 0, left: 0, right: 0, height: 28, borderRadius: 14 },
   statCardValue: { fontFamily: "Cairo_700Bold", fontSize: 14 },
   statCardLabel: { fontFamily: "Cairo_400Regular", fontSize: 9 },
+  drawerBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 18 },
+  drawerPanel: { borderRadius: 22, borderWidth: 1, padding: 16, gap: 10 },
+  drawerHeader: { flexDirection: "row-reverse", alignItems: "center", gap: 12, paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+  drawerAvatar: { width: 52, height: 52, borderRadius: 16, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  drawerAvatarText: { fontFamily: "Cairo_700Bold", fontSize: 18 },
+  drawerUserInfo: { flex: 1, alignItems: "flex-end", gap: 2 },
+  drawerUsername: { fontFamily: "Cairo_700Bold", fontSize: 16 },
+  drawerBalance: { fontFamily: "Cairo_600SemiBold", fontSize: 14 },
+  vipChip: { flexDirection: "row-reverse", alignItems: "center", gap: 4, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-end", marginTop: 2 },
+  vipChipText: { fontFamily: "Cairo_700Bold", fontSize: 10 },
+  drawerItem: { flexDirection: "row-reverse", alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 12, gap: 10 },
+  drawerItemLabel: { flex: 1, fontFamily: "Cairo_600SemiBold", fontSize: 14, textAlign: "right" },
+  drawerItemIcon: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  drawerLogout: { marginTop: 6, borderRadius: 14, borderWidth: 1, paddingVertical: 12, alignItems: "center", justifyContent: "center", flexDirection: "row-reverse", gap: 8 },
+  drawerLogoutText: { fontFamily: "Cairo_700Bold", fontSize: 14, color: "#ef4444" },
 });
