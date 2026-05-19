@@ -157,6 +157,8 @@ export default function AdminScreen() {
   const [holdTimer, setHoldTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [holdInterval, setHoldInterval] = useState<ReturnType<typeof setInterval> | null>(null);
 
+  const [imageViewerUrl, setImageViewerUrl] = useState<string | null>(null);
+
   const [stats, setStats] = useState<any>(null);
   const [users, setUsers] = useState<any[] | undefined>(undefined);
   const [tools, setTools] = useState<any[] | undefined>(undefined);
@@ -218,13 +220,39 @@ export default function AdminScreen() {
   };
   useEffect(() => { if (tab === "notifications") fetchSentLog(); }, [tab]);
 
+  const confirmAction = (message: string, onConfirm: () => void) => {
+    if (Platform.OS === "web") {
+      if (window.confirm(message)) onConfirm();
+    } else {
+      Alert.alert("تأكيد", message, [
+        { text: "إلغاء", style: "cancel" },
+        { text: "تأكيد", onPress: onConfirm },
+      ]);
+    }
+  };
+
   const handleRechargeStatus = async (id: number, status: "approved" | "rejected") => {
-    const res = await apiFetch(`${apiBase}/api/recharge/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-    });
-    if (res.ok) fetchRechargeRequests();
-    else Alert.alert("خطأ", "فشلت العملية");
+    try {
+      const res = await apiFetch(`${apiBase}/api/recharge/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        await fetchRechargeRequests();
+        if (Platform.OS === "web") {
+          window.alert(status === "approved" ? "تم قبول الطلب ✓" : "تم رفض الطلب ✗");
+        } else {
+          Alert.alert(status === "approved" ? "تم القبول ✓" : "تم الرفض ✗", status === "approved" ? "تم قبول طلب الشحن بنجاح." : "تم رفض طلب الشحن.");
+        }
+      } else {
+        const json = await res.json().catch(() => ({}));
+        if (Platform.OS === "web") window.alert("خطأ: " + (json.error ?? "فشلت العملية"));
+        else Alert.alert("خطأ", json.error ?? "فشلت العملية");
+      }
+    } catch (e: any) {
+      if (Platform.OS === "web") window.alert("خطأ في الاتصال");
+      else Alert.alert("خطأ", "خطأ في الاتصال");
+    }
   };
 
   const onRefresh = () => {
@@ -846,18 +874,29 @@ export default function AdminScreen() {
                     <View style={[styles.badge, { backgroundColor: statusColor + "22" }]}><Text style={[styles.badgeText, { color: statusColor }]}>{statusLabel}</Text></View>
                   </View>
                   {r.transferImageUrl ? (
-                    <TouchableOpacity onPress={() => Linking.openURL(r.transferImageUrl)} style={{ width: "100%" }}>
-                      <Image source={{ uri: r.transferImageUrl }} style={{ width: "100%", height: 140, borderRadius: 10 }} resizeMode="cover" />
-                      <Text style={[styles.listItemSub, { color: "#60a5fa", textAlign: "center", marginTop: 4 }]}>عرض صورة الإيصال</Text>
+                    <TouchableOpacity onPress={() => setImageViewerUrl(r.transferImageUrl)} style={{ width: "100%" }} activeOpacity={0.85}>
+                      <Image source={{ uri: r.transferImageUrl }} style={{ width: "100%", height: 160, borderRadius: 10, backgroundColor: "#1a1a2e" }} resizeMode="cover" />
+                      <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 6 }}>
+                        <Feather name="zoom-in" size={14} color="#60a5fa" />
+                        <Text style={[styles.listItemSub, { color: "#60a5fa" }]}>اضغط لعرض الإيصال بالحجم الكامل</Text>
+                      </View>
                     </TouchableOpacity>
                   ) : null}
                   {isPending && (
                     <View style={{ flexDirection: "row-reverse", gap: 8, width: "100%" }}>
-                      <TouchableOpacity onPress={() => { Alert.alert("تأكيد", "قبول طلب الشحن؟", [{ text: "إلغاء", style: "cancel" }, { text: "قبول", onPress: () => handleRechargeStatus(r.id, "approved") }]); }} style={[styles.modalBtn, { backgroundColor: "#34d39922", flex: 1 }]}>
-                        <Text style={[styles.modalBtnText, { color: "#34d399" }]}>قبول ✓</Text>
+                      <TouchableOpacity
+                        onPress={() => confirmAction("هل تريد قبول طلب الشحن؟", () => handleRechargeStatus(r.id, "approved"))}
+                        style={[styles.modalBtn, { backgroundColor: "#34d39922", borderWidth: 1, borderColor: "#34d39944", flex: 1 }]}
+                      >
+                        <Feather name="check" size={15} color="#34d399" />
+                        <Text style={[styles.modalBtnText, { color: "#34d399" }]}>قبول</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity onPress={() => { Alert.alert("تأكيد", "رفض طلب الشحن؟", [{ text: "إلغاء", style: "cancel" }, { text: "رفض", style: "destructive", onPress: () => handleRechargeStatus(r.id, "rejected") }]); }} style={[styles.modalBtn, { backgroundColor: "#ef444422", flex: 1 }]}>
-                        <Text style={[styles.modalBtnText, { color: "#ef4444" }]}>رفض ✗</Text>
+                      <TouchableOpacity
+                        onPress={() => confirmAction("هل تريد رفض طلب الشحن؟", () => handleRechargeStatus(r.id, "rejected"))}
+                        style={[styles.modalBtn, { backgroundColor: "#ef444422", borderWidth: 1, borderColor: "#ef444444", flex: 1 }]}
+                      >
+                        <Feather name="x" size={15} color="#ef4444" />
+                        <Text style={[styles.modalBtnText, { color: "#ef4444" }]}>رفض</Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -1050,6 +1089,29 @@ export default function AdminScreen() {
               </View>
             </View>
           </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Image Viewer Modal */}
+      <Modal visible={!!imageViewerUrl} transparent animationType="fade" onRequestClose={() => setImageViewerUrl(null)}>
+        <View style={{ flex: 1, backgroundColor: "#000000ee", justifyContent: "center", alignItems: "center" }}>
+          <TouchableOpacity onPress={() => setImageViewerUrl(null)} style={{ position: "absolute", top: 50, left: 20, zIndex: 10, backgroundColor: "#ffffff22", borderRadius: 20, padding: 8 }}>
+            <Feather name="x" size={24} color="#fff" />
+          </TouchableOpacity>
+          {imageViewerUrl ? (
+            <Image
+              source={{ uri: imageViewerUrl }}
+              style={{ width: "95%", height: "75%", borderRadius: 12 }}
+              resizeMode="contain"
+            />
+          ) : null}
+          <TouchableOpacity
+            onPress={() => { if (imageViewerUrl) Linking.openURL(imageViewerUrl); }}
+            style={{ marginTop: 16, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#ffffff22", paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 }}
+          >
+            <Feather name="external-link" size={16} color="#fff" />
+            <Text style={{ color: "#fff", fontFamily: "Cairo_600SemiBold", fontSize: 14 }}>فتح في المتصفح</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
 
