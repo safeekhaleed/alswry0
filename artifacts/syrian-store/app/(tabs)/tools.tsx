@@ -33,7 +33,8 @@ type Tool = {
   createdAt: string;
 };
 
-const API_BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+const PROD_API = "https://alsouri-maak-api.onrender.com";
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : Platform.OS !== "web" ? PROD_API : "";
 
 function useListTools() {
   const [data, setData] = useState<Tool[] | undefined>(undefined);
