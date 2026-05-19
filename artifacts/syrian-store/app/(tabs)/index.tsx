@@ -478,7 +478,9 @@ export default function HomeScreen() {
               style={{ width: screenWidth - 32 }}
             >
               {banners.map((b) => (
-                <Image key={b.id} source={{ uri: b.imageUrl }} style={{ width: screenWidth - 32, height: 160, borderRadius: 16 }} resizeMode="cover" />
+                <View key={b.id} style={{ width: screenWidth - 32, height: 160, borderRadius: 16, overflow: "hidden" }}>
+                  <Image source={{ uri: b.imageUrl }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+                </View>
               ))}
             </ScrollView>
             {banners.length > 1 && (
@@ -734,7 +736,7 @@ const styles = StyleSheet.create({
   bannerIconGroup: { alignItems: "center", justifyContent: "center", marginRight: 8 },
   bannerIconCircle: { width: 80, height: 80, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   bannerUsername: { fontFamily: "Cairo_700Bold", fontSize: 15, alignSelf: "flex-end" },
-  carouselWrap: { gap: 8, paddingHorizontal: 16 },
+  carouselWrap: { gap: 8, paddingHorizontal: 16, overflow: "hidden" },
   carouselDots: { flexDirection: "row", justifyContent: "center", gap: 6 },
   carouselDot: { width: 8, height: 8, borderRadius: 4 },
   section: { paddingHorizontal: 16, gap: 10 },
