@@ -1,8 +1,4 @@
-import { BlurView } from "expo-blur";
-import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
-import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
-import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
@@ -10,37 +6,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 
-function NativeTabLayout() {
-  return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "house", selected: "house.fill" }} />
-        <Label>الرئيسية</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="store">
-        <Icon sf={{ default: "bag", selected: "bag.fill" }} />
-        <Label>المتجر</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="lessons">
-        <Icon sf={{ default: "play.rectangle", selected: "play.rectangle.fill" }} />
-        <Label>الدروس</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="tools">
-        <Icon sf={{ default: "wrench", selected: "wrench.fill" }} />
-        <Label>الأدوات</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="services">
-        <Icon sf={{ default: "star", selected: "star.fill" }} />
-        <Label>الخدمات</Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
-  );
-}
+const BlurView: React.ComponentType<any> | null =
+  Platform.OS === "ios" ? require("expo-blur").BlurView : null;
 
-function ClassicTabLayout() {
+const SymbolView: React.ComponentType<any> | null =
+  Platform.OS === "ios" ? require("expo-symbols").SymbolView : null;
+
+export default function TabLayout() {
   const colors = useColors();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const insets = useSafeAreaInsets();
@@ -65,20 +38,11 @@ function ClassicTabLayout() {
           ...(isWeb ? { height: 84 } : {}),
         },
         tabBarBackground: () =>
-          isIOS ? (
-            <BlurView
-              intensity={80}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
-          ) : isWeb ? (
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: "#0d0028" },
-              ]}
-            />
-          ) : null,
+          isIOS && BlurView ? (
+            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0d0028" }]} />
+          ),
       }}
     >
       <Tabs.Screen
@@ -86,7 +50,7 @@ function ClassicTabLayout() {
         options={{
           title: "الرئيسية",
           tabBarIcon: ({ color, size }) =>
-            isIOS ? (
+            isIOS && SymbolView ? (
               <SymbolView name="house.fill" tintColor={color} size={size} />
             ) : (
               <Feather name="home" size={size} color={color} />
@@ -98,7 +62,7 @@ function ClassicTabLayout() {
         options={{
           title: "المتجر",
           tabBarIcon: ({ color, size }) =>
-            isIOS ? (
+            isIOS && SymbolView ? (
               <SymbolView name="bag.fill" tintColor={color} size={size} />
             ) : (
               <Feather name="shopping-bag" size={size} color={color} />
@@ -110,7 +74,7 @@ function ClassicTabLayout() {
         options={{
           title: "الدروس",
           tabBarIcon: ({ color, size }) =>
-            isIOS ? (
+            isIOS && SymbolView ? (
               <SymbolView name="play.rectangle.fill" tintColor={color} size={size} />
             ) : (
               <Feather name="play-circle" size={size} color={color} />
@@ -122,7 +86,7 @@ function ClassicTabLayout() {
         options={{
           title: "الأدوات",
           tabBarIcon: ({ color, size }) =>
-            isIOS ? (
+            isIOS && SymbolView ? (
               <SymbolView name="wrench.fill" tintColor={color} size={size} />
             ) : (
               <Feather name="tool" size={size} color={color} />
@@ -134,7 +98,7 @@ function ClassicTabLayout() {
         options={{
           title: "الخدمات",
           tabBarIcon: ({ color, size }) =>
-            isIOS ? (
+            isIOS && SymbolView ? (
               <SymbolView name="star.fill" tintColor={color} size={size} />
             ) : (
               <Feather name="briefcase" size={size} color={color} />
@@ -149,11 +113,4 @@ function ClassicTabLayout() {
       />
     </Tabs>
   );
-}
-
-export default function TabLayout() {
-  if (isLiquidGlassAvailable()) {
-    return <NativeTabLayout />;
-  }
-  return <ClassicTabLayout />;
 }
