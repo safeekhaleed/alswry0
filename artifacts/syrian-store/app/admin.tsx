@@ -76,7 +76,10 @@ export default function AdminScreen() {
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
   const { logout, isAdmin, isLoading: authLoading, token } = useAuth();
-  const apiBase = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+  const PROD_API = "https://alsouri-maak-api.onrender.com";
+  const apiBase = process.env.EXPO_PUBLIC_DOMAIN
+    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+    : Platform.OS !== "web" ? PROD_API : "";
 
   const apiFetch = React.useCallback((url: string, opts: RequestInit = {}) => {
     const hdrs: Record<string, string> = {
