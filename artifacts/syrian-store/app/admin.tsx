@@ -309,6 +309,66 @@ export default function AdminScreen() {
     finally { setAddFileUploading(false); }
   };
 
+  // Web-only: pick any file using browser input
+  const pickWebFile = (accept: string, onBase64: (base64: string, mimeType: string, name: string) => Promise<void>) => {
+    if (Platform.OS !== "web") return;
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = accept;
+    input.onchange = async (e: any) => {
+      const file = e.target?.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (ev: any) => {
+        const dataUrl: string = ev.target.result;
+        const base64 = dataUrl.split(",")[1];
+        await onBase64(base64, file.type || "application/octet-stream", file.name);
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
+  const pickWebCardImage = (setter: (url: string) => void) => {
+    pickWebFile("image/*", async (base64, mimeType) => {
+      setCardImageUploading(true);
+      try {
+        const res = await apiFetch(`${apiBase}/api/upload`, { method: "POST", body: JSON.stringify({ base64, mimeType }) });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? "خطأ في الرفع");
+        setter(json.url);
+      } catch (e: any) { Alert.alert("خطأ", "فشل رفع الصورة: " + e.message); }
+      finally { setCardImageUploading(false); }
+    });
+  };
+
+  const pickWebBannerImage = () => {
+    pickWebFile("image/*", async (base64, mimeType) => {
+      setBannerUploading(true);
+      try {
+        const res = await apiFetch(`${apiBase}/api/upload`, { method: "POST", body: JSON.stringify({ base64, mimeType }) });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? "خطأ في الرفع");
+        setBannerImageUrl(json.url);
+      } catch (e: any) { Alert.alert("خطأ", "فشل رفع الصورة: " + e.message); }
+      finally { setBannerUploading(false); }
+    });
+  };
+
+  const pickWebContentFile = (isVideo = false) => {
+    pickWebFile(isVideo ? "video/*" : "*/*", async (base64, mimeType, name) => {
+      setAddFileUploading(true);
+      try {
+        const res = await apiFetch(`${apiBase}/api/upload`, { method: "POST", body: JSON.stringify({ base64, mimeType }) });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? "خطأ في الرفع");
+        if (isVideo) { setAddVideoUrl(json.url); } else { setAddContent(json.url); }
+        Alert.alert("تم ✓", `تم رفع: ${name}`);
+      } catch (e: any) { Alert.alert("خطأ", "فشل الرفع: " + e.message); }
+      finally { setAddFileUploading(false); }
+    });
+  };
+
   const saveBanner = async () => {
     if (!bannerImageUrl.trim()) { Alert.alert("مطلوب", "أدخل رابط الصورة"); return; }
     try {
@@ -821,11 +881,9 @@ export default function AdminScreen() {
               <>
                 <View style={{ flexDirection: "row-reverse", gap: 8, alignItems: "center" }}>
                   <TextInput value={imageUrl} onChangeText={setImageUrl} placeholder="رابط صورة البطاقة (اختياري)" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { flex: 1 }]} autoCapitalize="none" keyboardType="url" />
-                  {Platform.OS !== "web" && (
-                    <TouchableOpacity onPress={() => pickCardImage(setImageUrl)} disabled={cardImageUploading} style={[styles.chargeBtn, { backgroundColor: colors.primary + "22", borderColor: colors.primary + "44", opacity: cardImageUploading ? 0.5 : 1 }]}>
-                      <Feather name={cardImageUploading ? "loader" : "image"} size={18} color={colors.primary} />
-                    </TouchableOpacity>
-                  )}
+                  <TouchableOpacity onPress={() => Platform.OS === "web" ? pickWebCardImage(setImageUrl) : pickCardImage(setImageUrl)} disabled={cardImageUploading} style={[styles.chargeBtn, { backgroundColor: colors.primary + "22", borderColor: colors.primary + "44", opacity: cardImageUploading ? 0.5 : 1 }]}>
+                    <Feather name={cardImageUploading ? "loader" : "image"} size={18} color={colors.primary} />
+                  </TouchableOpacity>
                 </View>
                 <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>نوع المحتوى المُسلَّم</Text>
                 <ContentTypePicker value={editContentType} onChange={setEditContentType} />
@@ -880,11 +938,9 @@ export default function AdminScreen() {
                 </View>
                 <View style={{ flexDirection: "row-reverse", gap: 8, alignItems: "center" }}>
                   <TextInput value={addImageUrl} onChangeText={setAddImageUrl} placeholder="رابط الصورة (اختياري)" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { flex: 1 }]} autoCapitalize="none" keyboardType="url" />
-                  {Platform.OS !== "web" && (
-                    <TouchableOpacity onPress={() => pickCardImage(setAddImageUrl)} disabled={cardImageUploading} style={[styles.chargeBtn, { backgroundColor: colors.primary + "22", borderColor: colors.primary + "44", opacity: cardImageUploading ? 0.5 : 1 }]}>
-                      <Feather name={cardImageUploading ? "loader" : "upload"} size={18} color={colors.primary} />
-                    </TouchableOpacity>
-                  )}
+                  <TouchableOpacity onPress={() => Platform.OS === "web" ? pickWebCardImage(setAddImageUrl) : pickCardImage(setAddImageUrl)} disabled={cardImageUploading} style={[styles.chargeBtn, { backgroundColor: colors.primary + "22", borderColor: colors.primary + "44", opacity: cardImageUploading ? 0.5 : 1 }]}>
+                    <Feather name={cardImageUploading ? "loader" : "upload"} size={18} color={colors.primary} />
+                  </TouchableOpacity>
                 </View>
                 {addImageUrl.trim().length > 0 && <Image source={{ uri: addImageUrl }} style={{ width: "100%", height: 80, borderRadius: 10 }} resizeMode="cover" />}
 
@@ -903,33 +959,25 @@ export default function AdminScreen() {
                   <TextInput value={addContent} onChangeText={setAddContent} placeholder="اكتب النص الذي سيُرسل للمشتري..." placeholderTextColor={colors.mutedForeground} style={[inputStyle, { minHeight: 80, textAlignVertical: "top" }]} multiline />
                 )}
                 {(addContentType === "file" || addContentType === "app") && (
-                  Platform.OS !== "web" ? (
-                    <TouchableOpacity onPress={pickToolFile} disabled={addFileUploading}
-                      style={[styles.uploadFileBtn, { backgroundColor: addContent ? "#14532d" : colors.secondary, borderColor: addContent ? "#22c55e44" : colors.border, opacity: addFileUploading ? 0.5 : 1 }]}>
-                      <Feather name={addFileUploading ? "loader" : addContent ? "check-circle" : "folder"} size={18} color={addContent ? "#22c55e" : colors.primary} />
-                      <Text style={[styles.uploadFileBtnText, { color: addContent ? "#22c55e" : colors.primary }]}>
-                        {addFileUploading ? "جاري الرفع..." : addContent ? "تم الرفع ✓ — اضغط لتغيير الملف" : "اضغط لاختيار ملف من الجهاز"}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TextInput value={addContent} onChangeText={setAddContent} placeholder="رابط الملف / التطبيق" placeholderTextColor={colors.mutedForeground} style={inputStyle} autoCapitalize="none" keyboardType="url" />
-                  )
+                  <TouchableOpacity onPress={Platform.OS === "web" ? () => pickWebContentFile(false) : pickToolFile} disabled={addFileUploading}
+                    style={[styles.uploadFileBtn, { backgroundColor: addContent ? "#14532d" : colors.secondary, borderColor: addContent ? "#22c55e44" : colors.border, opacity: addFileUploading ? 0.5 : 1 }]}>
+                    <Feather name={addFileUploading ? "loader" : addContent ? "check-circle" : "folder"} size={18} color={addContent ? "#22c55e" : colors.primary} />
+                    <Text style={[styles.uploadFileBtnText, { color: addContent ? "#22c55e" : colors.primary }]}>
+                      {addFileUploading ? "جاري الرفع..." : addContent ? "تم الرفع ✓ — اضغط لتغيير الملف" : "اضغط لاختيار ملف من الجهاز"}
+                    </Text>
+                  </TouchableOpacity>
                 )}
                 {(addContentType === "video") && (
-                  Platform.OS !== "web" ? (
-                    <>
-                      <TouchableOpacity onPress={pickLessonVideo} disabled={addFileUploading}
-                        style={[styles.uploadFileBtn, { backgroundColor: addContent ? "#14532d" : colors.secondary, borderColor: addContent ? "#22c55e44" : colors.border, opacity: addFileUploading ? 0.5 : 1 }]}>
-                        <Feather name={addFileUploading ? "loader" : addContent ? "check-circle" : "video"} size={18} color={addContent ? "#22c55e" : colors.primary} />
-                        <Text style={[styles.uploadFileBtnText, { color: addContent ? "#22c55e" : colors.primary }]}>
-                          {addFileUploading ? "جاري الرفع..." : addContent ? "تم رفع الفيديو ✓ — اضغط لتغييره" : "اضغط لاختيار فيديو من الجهاز"}
-                        </Text>
-                      </TouchableOpacity>
-                      {addVideoUrl ? null : <TextInput value={addContent} onChangeText={setAddContent} placeholder="أو أدخل رابط الفيديو مباشرة" placeholderTextColor={colors.mutedForeground} style={inputStyle} autoCapitalize="none" keyboardType="url" />}
-                    </>
-                  ) : (
-                    <TextInput value={addContent} onChangeText={setAddContent} placeholder="رابط الفيديو" placeholderTextColor={colors.mutedForeground} style={inputStyle} autoCapitalize="none" keyboardType="url" />
-                  )
+                  <>
+                    <TouchableOpacity onPress={Platform.OS === "web" ? () => pickWebContentFile(true) : pickLessonVideo} disabled={addFileUploading}
+                      style={[styles.uploadFileBtn, { backgroundColor: (addVideoUrl || addContent) ? "#14532d" : colors.secondary, borderColor: (addVideoUrl || addContent) ? "#22c55e44" : colors.border, opacity: addFileUploading ? 0.5 : 1 }]}>
+                      <Feather name={addFileUploading ? "loader" : (addVideoUrl || addContent) ? "check-circle" : "video"} size={18} color={(addVideoUrl || addContent) ? "#22c55e" : colors.primary} />
+                      <Text style={[styles.uploadFileBtnText, { color: (addVideoUrl || addContent) ? "#22c55e" : colors.primary }]}>
+                        {addFileUploading ? "جاري الرفع..." : (addVideoUrl || addContent) ? "تم رفع الفيديو ✓ — اضغط لتغييره" : "اضغط لاختيار فيديو من الجهاز"}
+                      </Text>
+                    </TouchableOpacity>
+                    {!addVideoUrl && <TextInput value={addContent} onChangeText={setAddContent} placeholder="أو أدخل رابط الفيديو مباشرة" placeholderTextColor={colors.mutedForeground} style={inputStyle} autoCapitalize="none" keyboardType="url" />}
+                  </>
                 )}
 
                 {/* Active toggle */}
@@ -954,12 +1002,10 @@ export default function AdminScreen() {
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>إضافة بانر جديد</Text>
               <View style={{ gap: 10 }}>
                 <View style={{ flexDirection: "row-reverse", gap: 8, alignItems: "center" }}>
-                  <TextInput value={bannerImageUrl} onChangeText={setBannerImageUrl} placeholder="رابط الصورة *" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { flex: 1 }]} autoCapitalize="none" keyboardType="url" />
-                  {Platform.OS !== "web" && (
-                    <TouchableOpacity onPress={pickBannerImage} disabled={bannerUploading} style={[styles.chargeBtn, { backgroundColor: colors.primary + "22", borderColor: colors.primary + "44", opacity: bannerUploading ? 0.5 : 1 }]}>
-                      <Feather name={bannerUploading ? "loader" : "image"} size={18} color={colors.primary} />
-                    </TouchableOpacity>
-                  )}
+                  <TextInput value={bannerImageUrl} onChangeText={setBannerImageUrl} placeholder="رابط الصورة (أو اختر من الجهاز)" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { flex: 1 }]} autoCapitalize="none" keyboardType="url" />
+                  <TouchableOpacity onPress={Platform.OS === "web" ? pickWebBannerImage : pickBannerImage} disabled={bannerUploading} style={[styles.chargeBtn, { backgroundColor: bannerImageUrl ? "#14532d" : colors.primary + "22", borderColor: bannerImageUrl ? "#22c55e44" : colors.primary + "44", opacity: bannerUploading ? 0.5 : 1 }]}>
+                    <Feather name={bannerUploading ? "loader" : bannerImageUrl ? "check" : "image"} size={18} color={bannerImageUrl ? "#22c55e" : colors.primary} />
+                  </TouchableOpacity>
                 </View>
                 {bannerImageUrl.trim().length > 0 && <Image source={{ uri: bannerImageUrl }} style={[styles.bannerThumb, { alignSelf: "center" }]} resizeMode="cover" />}
                 <TextInput value={bannerTitle} onChangeText={setBannerTitle} placeholder="العنوان (اختياري)" placeholderTextColor={colors.mutedForeground} style={inputStyle} />

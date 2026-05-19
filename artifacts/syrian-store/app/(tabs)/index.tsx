@@ -200,13 +200,7 @@ const dStyles = StyleSheet.create({
 
 function ToolCard({ tool }: { tool: Tool }) {
   const colors = useColors();
-  const handlePress = async () => {
-    if (tool.url) {
-      const { Linking } = await import("react-native");
-      try {
-        if (await Linking.canOpenURL(tool.url)) { Linking.openURL(tool.url); return; }
-      } catch { }
-    }
+  const handlePress = () => {
     router.push(`/tool/${tool.id}`);
   };
   const cardColor = tool.color || "#7c3aed";
