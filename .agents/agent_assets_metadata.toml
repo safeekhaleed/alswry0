@@ -1,0 +1,26 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "urlZl37Z-x1ycx3mnYC23"
+uri = "file://artifacts/syrian-store/assets/images/icon.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "KQnmrHLuSJ9N5XfHlhDSd"
+uri = "file://artifacts/syrian-store/assets/images/category_food.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Fh8ljfDtq4xJ3P2xx0Joi"
+uri = "file://artifacts/syrian-store/assets/images/category_crafts.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "q9Hq8eGSv31PPblRXggqH"
+uri = "file://artifacts/syrian-store/assets/images/category_beauty.png"
+type = "image"
+title = "generated_image"
