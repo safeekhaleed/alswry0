@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -96,17 +95,17 @@ export default function NotificationsScreen() {
 
   if (!user) {
     return (
-      <LinearGradient colors={["#0a001a", "#0d0028"]} style={styles.flex}>
+      <View style={[styles.flex, { backgroundColor: "#0a001a" }]}>
         <View style={[styles.empty, { paddingTop: insets.top + 60 }]}>
           <Feather name="lock" size={52} color="#2d4a6a" />
           <Text style={styles.emptyText}>سجّل الدخول لعرض إشعاراتك</Text>
         </View>
-      </LinearGradient>
+      </View>
     );
   }
 
   return (
-    <LinearGradient colors={["#0a001a", "#0d0028"]} style={styles.flex}>
+    <View style={[styles.flex, { backgroundColor: "#0a001a" }]}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.title}>الإشعارات</Text>
         {unreadCount > 0 && (
@@ -189,7 +188,7 @@ export default function NotificationsScreen() {
           )}
         </ScrollView>
       )}
-    </LinearGradient>
+    </View>
   );
 }
 

@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -85,9 +84,8 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={[colors.primary + "22", "transparent"]}
-          style={styles.topGradient}
+        <View
+          style={[styles.topGradient, { backgroundColor: colors.primary + "11" }]}
           pointerEvents="none"
         />
 
