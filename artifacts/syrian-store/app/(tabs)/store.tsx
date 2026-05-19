@@ -34,10 +34,8 @@ type Service = {
   createdAt: string;
 };
 
-const API_BASE = (() => {
-  const d = process.env.EXPO_PUBLIC_DOMAIN ?? "";
-  return d ? `https://${d}` : "";
-})();
+const PROD_API = "https://alsouri-maak-api.onrender.com";
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : Platform.OS !== "web" ? PROD_API : "";
 
 function useListServices() {
   const [data, setData] = useState<Service[] | undefined>(undefined);
