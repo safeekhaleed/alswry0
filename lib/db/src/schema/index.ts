@@ -15,6 +15,8 @@ export const usersTable = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   balance: numeric("balance", { precision: 10, scale: 2 }).notNull().default("0"),
   isVip: boolean("is_vip").notNull().default(false),
+  vipLevel: integer("vip_level").notNull().default(0),
+  totalRecharged: numeric("total_recharged", { precision: 10, scale: 2 }).notNull().default("0"),
   isAdmin: boolean("is_admin").notNull().default(false),
   pushToken: text("push_token"),
   accountId: text("account_id"),

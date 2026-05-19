@@ -15,6 +15,8 @@ function userPublic(u: typeof usersTable.$inferSelect, token?: string) {
     email: u.email,
     balance: u.balance,
     isVip: u.isVip,
+    vipLevel: u.vipLevel ?? 0,
+    totalRecharged: u.totalRecharged ?? "0",
     isAdmin: u.isAdmin,
     pushToken: u.pushToken,
     accountId: u.accountId,

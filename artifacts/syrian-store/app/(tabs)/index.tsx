@@ -18,6 +18,7 @@ import {
   View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -98,9 +99,9 @@ function ProfileDrawer({
                     <Text style={dStyles.avatarInitial}>{initial}</Text>
                   </View>
                 </View>
-                {(user as any)?.isVip && (
-                  <View style={dStyles.vipBadge}>
-                    <Text style={dStyles.vipText}>VIP</Text>
+                {(user as any)?.vipLevel > 0 && (
+                  <View style={[dStyles.vipBadge, { backgroundColor: (user as any).vipLevel >= 5 ? "#9333ea" : "#d4a017" }]}>
+                    <Text style={dStyles.vipText}>VIP {(user as any).vipLevel}</Text>
                   </View>
                 )}
               </View>
@@ -109,6 +110,21 @@ function ProfileDrawer({
                 <Text style={dStyles.balanceAmount}>{balanceAmount}$</Text>
                 <Text style={dStyles.balanceLabel}>رصيدك</Text>
               </View>
+              {(user as any)?.vipLevel > 0 && (
+                <View style={{ backgroundColor: "rgba(212,160,23,0.1)", borderRadius: 12, borderWidth: 1, borderColor: "rgba(212,160,23,0.3)", paddingHorizontal: 14, paddingVertical: 10, gap: 4 }}>
+                  <View style={{ flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center" }}>
+                    <Text style={{ fontFamily: "Cairo_700Bold", fontSize: 13, color: "#d4a017" }}>VIP {(user as any).vipLevel} — خصم {(user as any).vipLevel * 5}%</Text>
+                    {(user as any).vipLevel < 6 && (
+                      <Text style={{ fontFamily: "Cairo_400Regular", fontSize: 11, color: "#8b7bb8" }}>
+                        التالي: شحن {50 - (parseFloat((user as any).totalRecharged ?? "0") % 50)}$
+                      </Text>
+                    )}
+                  </View>
+                  <View style={{ height: 4, borderRadius: 2, backgroundColor: "rgba(212,160,23,0.2)", overflow: "hidden" }}>
+                    <View style={{ height: "100%", width: `${(user as any).vipLevel >= 6 ? 100 : Math.round((parseFloat((user as any).totalRecharged ?? "0") % 50) / 50 * 100)}%` as any, backgroundColor: "#d4a017", borderRadius: 2 }} />
+                  </View>
+                </View>
+              )}
               {accountId ? <Text style={dStyles.accountId}>معزز الحساب: {accountId}</Text> : null}
               <View style={dStyles.separator} />
               {menuItems.map((item) => (
@@ -330,7 +346,44 @@ export default function HomeScreen() {
     return () => clearInterval(timer);
   }, [banners, screenWidth]);
 
-  const tools = (allTools ?? []).filter((t) => t.isActive).slice(0, 4);
+  const [selectedToolIds, setSelectedToolIds] = useState<number[] | null>(null);
+  const [showCustomize, setShowCustomize] = useState(false);
+  const [customizeDraft, setCustomizeDraft] = useState<number[]>([]);
+
+  useEffect(() => {
+    AsyncStorage.getItem("@home_tools").then((val) => {
+      if (val) {
+        try { setSelectedToolIds(JSON.parse(val)); } catch { }
+      }
+    });
+  }, []);
+
+  const activeTools = (allTools ?? []).filter((t) => t.isActive);
+
+  const saveCustomize = async () => {
+    setSelectedToolIds(customizeDraft);
+    await AsyncStorage.setItem("@home_tools", JSON.stringify(customizeDraft));
+    setShowCustomize(false);
+  };
+
+  const openCustomize = () => {
+    setCustomizeDraft(selectedToolIds ?? activeTools.slice(0, 4).map((t) => t.id));
+    setShowCustomize(true);
+  };
+
+  const toggleToolDraft = (id: number) => {
+    setCustomizeDraft((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= 4) return prev;
+      return [...prev, id];
+    });
+  };
+
+  const displayedTools = selectedToolIds
+    ? activeTools.filter((t) => selectedToolIds.includes(t.id)).slice(0, 4)
+    : activeTools.slice(0, 4);
+
+  const tools = displayedTools;
   const toolSlots = [...tools];
   while (toolSlots.length < 4) toolSlots.push(null as unknown as Tool);
 
@@ -470,9 +523,18 @@ export default function HomeScreen() {
         )}
 
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={[styles.sectionBar, { backgroundColor: colors.primary }]} />
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>أدواتي التفاعلية</Text>
+          <View style={[styles.sectionHeader, { justifyContent: "space-between" }]}>
+            <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 10 }}>
+              <View style={[styles.sectionBar, { backgroundColor: colors.primary }]} />
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>أدواتي التفاعلية</Text>
+            </View>
+            {activeTools.length > 0 && (
+              <TouchableOpacity onPress={openCustomize} activeOpacity={0.8}
+                style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(212,160,23,0.12)", borderRadius: 10, borderWidth: 1, borderColor: "rgba(212,160,23,0.3)", paddingHorizontal: 10, paddingVertical: 5 }}>
+                <Feather name="sliders" size={13} color="#d4a017" />
+                <Text style={{ fontFamily: "Cairo_600SemiBold", fontSize: 11, color: "#d4a017" }}>تخصيص</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <View style={styles.toolsGrid}>
             {toolSlots.map((tool, i) =>
@@ -501,6 +563,45 @@ export default function HomeScreen() {
         onRecharge={() => { setMenuOpen(false); setTimeout(() => setRechargeOpen(true), 250); }}
         onNotifications={() => { setTimeout(() => router.push("/(tabs)/notifications"), 300); }}
       />
+
+      {/* Tools Customize Modal */}
+      <Modal visible={showCustomize} transparent animationType="slide" onRequestClose={() => setShowCustomize(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "flex-end" }}>
+          <View style={{ backgroundColor: "#0d0028", borderTopLeftRadius: 28, borderTopRightRadius: 28, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderColor: "rgba(212,160,23,0.3)", paddingHorizontal: 18, paddingTop: 8, paddingBottom: 32, maxHeight: "80%" }}>
+            <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: "rgba(212,160,23,0.15)", marginBottom: 12 }}>
+              <Text style={{ fontFamily: "Cairo_700Bold", fontSize: 17, color: "#f8fafc" }}>تخصيص أدواتي التفاعلية</Text>
+              <TouchableOpacity onPress={() => setShowCustomize(false)}>
+                <Feather name="x" size={20} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+            <Text style={{ fontFamily: "Cairo_400Regular", fontSize: 12, color: "#8b7bb8", textAlign: "right", marginBottom: 12 }}>
+              اختر حتى 4 أدوات تظهر في واجهتك الرئيسية ({customizeDraft.length}/4)
+            </Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+              {activeTools.map((tool) => {
+                const selected = customizeDraft.includes(tool.id);
+                const cardColor = tool.color || "#7c3aed";
+                return (
+                  <TouchableOpacity key={tool.id} onPress={() => toggleToolDraft(tool.id)} activeOpacity={0.8}
+                    style={{ flexDirection: "row-reverse", alignItems: "center", gap: 12, backgroundColor: selected ? cardColor + "18" : "rgba(124,58,237,0.06)", borderRadius: 14, borderWidth: 1.5, borderColor: selected ? cardColor + "66" : "rgba(124,58,237,0.15)", paddingHorizontal: 14, paddingVertical: 12 }}>
+                    <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: cardColor + "25", alignItems: "center", justifyContent: "center" }}>
+                      {tool.imageUrl ? <Image source={{ uri: tool.imageUrl }} style={{ width: 36, height: 36, borderRadius: 10 }} /> : <Feather name="tool" size={16} color={cardColor} />}
+                    </View>
+                    <Text style={{ flex: 1, fontFamily: "Cairo_600SemiBold", fontSize: 14, color: "#e2e8f0", textAlign: "right" }}>{tool.title}</Text>
+                    <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: selected ? cardColor : "rgba(124,58,237,0.3)", backgroundColor: selected ? cardColor : "transparent", alignItems: "center", justifyContent: "center" }}>
+                      {selected && <Feather name="check" size={12} color="#fff" />}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <TouchableOpacity onPress={saveCustomize} activeOpacity={0.85}
+              style={{ backgroundColor: "#d4a017", borderRadius: 16, paddingVertical: 14, alignItems: "center", marginTop: 16 }}>
+              <Text style={{ fontFamily: "Cairo_700Bold", fontSize: 15, color: "#0a001a" }}>حفظ التخصيص</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={rechargeOpen} transparent animationType="slide" onRequestClose={closeRecharge}>
         <View style={rStyles.backdrop}>

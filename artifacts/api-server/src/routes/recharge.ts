@@ -55,15 +55,22 @@ router.patch("/recharge/:id", requireAuth, async (req, res) => {
   }
   if (status === "approved" && updated.amount) {
     const [user] = await db
-      .select({ balance: usersTable.balance })
+      .select({ balance: usersTable.balance, totalRecharged: usersTable.totalRecharged })
       .from(usersTable)
       .where(eq(usersTable.id, updated.userId))
       .limit(1);
     if (user) {
       const newBalance = parseFloat(user.balance ?? "0") + parseFloat(updated.amount);
+      const newTotalRecharged = parseFloat(user.totalRecharged ?? "0") + parseFloat(updated.amount);
+      const newVipLevel = Math.min(6, Math.floor(newTotalRecharged / 50));
       await db
         .update(usersTable)
-        .set({ balance: String(newBalance) })
+        .set({
+          balance: String(newBalance),
+          totalRecharged: String(newTotalRecharged),
+          vipLevel: newVipLevel,
+          isVip: newVipLevel > 0,
+        })
         .where(eq(usersTable.id, updated.userId));
     }
   }

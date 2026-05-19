@@ -446,15 +446,18 @@ export default function AdminScreen() {
     if (tab !== "banners" && !addTitle.trim()) { Alert.alert("مطلوب", "أدخل اسم المنتج"); return; }
     try {
       if (tab === "tools") {
-        const res = await apiFetch(`${apiBase}/api/tools`, { method: "POST", body: JSON.stringify({ title: addTitle, description: addDescription || " ", category: addCategory || "عام", color: addColor || "#d4a017", url: addUrl || null, imageUrl: addImageUrl || null, content: addContent || null, contentType: addContentType || null, isActive: addIsActive }) });
+        const finalContent = addContentType === "video" ? (addVideoUrl || addContent) : addContent;
+        const res = await apiFetch(`${apiBase}/api/tools`, { method: "POST", body: JSON.stringify({ title: addTitle, description: addDescription || " ", category: addCategory || "عام", color: addColor || "#d4a017", url: addUrl || null, imageUrl: addImageUrl || null, content: finalContent || null, contentType: addContentType || null, isActive: addIsActive }) });
         if (!res.ok) { Alert.alert("خطأ", "فشل الإضافة"); return; }
         await refetchTools();
       } else if (tab === "services") {
-        const res = await apiFetch(`${apiBase}/api/services`, { method: "POST", body: JSON.stringify({ title: addTitle, description: addDescription || " ", category: addCategory || "عام", price: Number(addPrice || 0), url: addUrl || null, imageUrl: addImageUrl || null, content: addContent || null, contentType: addContentType || null, isAvailable: addIsActive }) });
+        const finalContent = addContentType === "video" ? (addVideoUrl || addContent) : addContent;
+        const res = await apiFetch(`${apiBase}/api/services`, { method: "POST", body: JSON.stringify({ title: addTitle, description: addDescription || " ", category: addCategory || "عام", price: Number(addPrice || 0), url: addUrl || null, imageUrl: addImageUrl || null, content: finalContent || null, contentType: addContentType || null, isAvailable: addIsActive }) });
         if (!res.ok) { Alert.alert("خطأ", "فشل الإضافة"); return; }
         await refetchServices();
       } else if (tab === "lessons") {
-        const res = await apiFetch(`${apiBase}/api/lessons`, { method: "POST", body: JSON.stringify({ title: addTitle, description: addDescription || " ", category: addCategory || "عام", duration: Number(addDuration || 0), videoUrl: addVideoUrl || null, imageUrl: addImageUrl || null, content: addContent || null, contentType: addContentType || null, isPublished: addIsActive }) });
+        const finalContent = addContentType === "video" ? (addVideoUrl || addContent) : addContent;
+        const res = await apiFetch(`${apiBase}/api/lessons`, { method: "POST", body: JSON.stringify({ title: addTitle, description: addDescription || " ", category: addCategory || "عام", price: Number(addPrice || 0), duration: Number(addDuration || 0), videoUrl: addVideoUrl || null, imageUrl: addImageUrl || null, content: finalContent || null, contentType: addContentType || null, isPublished: addIsActive }) });
         if (!res.ok) { Alert.alert("خطأ", "فشل الإضافة"); return; }
         await refetchLessons();
       }
@@ -845,42 +848,91 @@ export default function AdminScreen() {
                 {tab === "tools" ? "إضافة أداة جديدة" : tab === "services" ? "إضافة خدمة جديدة" : "إضافة درس جديد"}
               </Text>
               <View style={{ gap: 10 }}>
+                {/* Basic fields */}
                 <TextInput value={addTitle} onChangeText={setAddTitle} placeholder="الاسم *" placeholderTextColor={colors.mutedForeground} style={inputStyle} />
-                <TextInput value={addDescription} onChangeText={setAddDescription} placeholder="الوصف" placeholderTextColor={colors.mutedForeground} style={inputStyle} multiline />
-                <TextInput value={addCategory} onChangeText={setAddCategory} placeholder="التصنيف" placeholderTextColor={colors.mutedForeground} style={inputStyle} />
+                <TextInput value={addDescription} onChangeText={setAddDescription} placeholder="الوصف (اختياري)" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { minHeight: 56, textAlignVertical: "top" }]} multiline />
+                <TextInput value={addCategory} onChangeText={setAddCategory} placeholder="التصنيف (عام)" placeholderTextColor={colors.mutedForeground} style={inputStyle} />
+
+                {/* Price — shown for all tabs */}
+                <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
+                  <Feather name="tag" size={14} color={colors.primary} />
+                  <Text style={[styles.fieldLabel, { color: colors.mutedForeground, flex: 1 }]}>السعر (بالدولار)</Text>
+                </View>
+                <TextInput value={addPrice} onChangeText={setAddPrice} placeholder="0" placeholderTextColor={colors.mutedForeground} keyboardType="numeric" style={inputStyle} />
+
+                {/* Lessons: duration */}
                 {tab === "lessons" && (
+                  <TextInput value={addDuration} onChangeText={setAddDuration} placeholder="مدة الدرس (دقائق)" placeholderTextColor={colors.mutedForeground} keyboardType="numeric" style={inputStyle} />
+                )}
+
+                {/* Tools: color + interactive link */}
+                {tab === "tools" && (
                   <>
-                    <TextInput value={addDuration} onChangeText={setAddDuration} placeholder="المدة (دقائق)" placeholderTextColor={colors.mutedForeground} keyboardType="numeric" style={inputStyle} />
-                    <View style={{ flexDirection: "row-reverse", gap: 8, alignItems: "center" }}>
-                      <TextInput value={addVideoUrl} onChangeText={setAddVideoUrl} placeholder="رابط الفيديو (اختياري)" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { flex: 1 }]} autoCapitalize="none" keyboardType="url" />
-                      {Platform.OS !== "web" && (
-                        <TouchableOpacity onPress={pickLessonVideo} disabled={addFileUploading} style={[styles.chargeBtn, { backgroundColor: colors.primary + "22", borderColor: colors.primary + "44", opacity: addFileUploading ? 0.5 : 1 }]}>
-                          <Feather name={addFileUploading ? "loader" : "video"} size={18} color={colors.primary} />
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                    <TextInput value={addColor} onChangeText={setAddColor} placeholder="لون الكارت (مثال: #7c3aed)" placeholderTextColor={colors.mutedForeground} style={inputStyle} />
+                    <TextInput value={addUrl} onChangeText={setAddUrl} placeholder="رابط الأداة التفاعلية (يفتح فوراً عند الضغط)" placeholderTextColor={colors.mutedForeground} style={inputStyle} autoCapitalize="none" keyboardType="url" />
                   </>
                 )}
-                {tab === "tools" && <TextInput value={addColor} onChangeText={setAddColor} placeholder="اللون (مثال: #d4a017)" placeholderTextColor={colors.mutedForeground} style={inputStyle} />}
-                {tab === "services" && <TextInput value={addPrice} onChangeText={setAddPrice} placeholder="السعر" placeholderTextColor={colors.mutedForeground} keyboardType="numeric" style={inputStyle} />}
+
+                {/* Image picker */}
+                <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
+                  <Feather name="image" size={14} color={colors.primary} />
+                  <Text style={[styles.fieldLabel, { color: colors.mutedForeground, flex: 1 }]}>صورة البطاقة</Text>
+                </View>
                 <View style={{ flexDirection: "row-reverse", gap: 8, alignItems: "center" }}>
-                  <TextInput value={addImageUrl} onChangeText={setAddImageUrl} placeholder="رابط صورة البطاقة (اختياري)" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { flex: 1 }]} autoCapitalize="none" keyboardType="url" />
+                  <TextInput value={addImageUrl} onChangeText={setAddImageUrl} placeholder="رابط الصورة (اختياري)" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { flex: 1 }]} autoCapitalize="none" keyboardType="url" />
                   {Platform.OS !== "web" && (
                     <TouchableOpacity onPress={() => pickCardImage(setAddImageUrl)} disabled={cardImageUploading} style={[styles.chargeBtn, { backgroundColor: colors.primary + "22", borderColor: colors.primary + "44", opacity: cardImageUploading ? 0.5 : 1 }]}>
-                      <Feather name={cardImageUploading ? "loader" : "image"} size={18} color={colors.primary} />
+                      <Feather name={cardImageUploading ? "loader" : "upload"} size={18} color={colors.primary} />
                     </TouchableOpacity>
                   )}
                 </View>
-                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>نوع المحتوى المُسلَّم</Text>
-                <ContentTypePicker value={addContentType} onChange={setAddContentType} />
-                {tab === "tools" && <TextInput value={addUrl} onChangeText={setAddUrl} placeholder="رابط الأداة التفاعلية (يفتح عند الضغط على الكارت)" placeholderTextColor={colors.mutedForeground} style={inputStyle} autoCapitalize="none" keyboardType="url" />}
-                {tab === "tools" && addContentType === "file" && Platform.OS !== "web" && (
-                  <TouchableOpacity onPress={pickToolFile} disabled={addFileUploading} style={[styles.uploadFileBtn, { backgroundColor: colors.secondary, borderColor: colors.border, opacity: addFileUploading ? 0.5 : 1 }]}>
-                    <Feather name={addFileUploading ? "loader" : "upload"} size={16} color={colors.primary} />
-                    <Text style={[styles.uploadFileBtnText, { color: colors.primary }]}>{addFileUploading ? "جاري الرفع..." : "اختر ملف (.txt / .py / .apk)"}</Text>
-                  </TouchableOpacity>
+                {addImageUrl.trim().length > 0 && <Image source={{ uri: addImageUrl }} style={{ width: "100%", height: 80, borderRadius: 10 }} resizeMode="cover" />}
+
+                {/* Delivered content type */}
+                <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6, marginTop: 4 }}>
+                  <Feather name="package" size={14} color={colors.primary} />
+                  <Text style={[styles.fieldLabel, { color: colors.mutedForeground, flex: 1 }]}>نوع المحتوى المُسلَّم بعد الدفع</Text>
+                </View>
+                <ContentTypePicker value={addContentType} onChange={(v) => { setAddContentType(v); setAddContent(""); }} />
+
+                {/* Content input — changes based on type */}
+                {(addContentType === "link") && (
+                  <TextInput value={addContent} onChangeText={setAddContent} placeholder="أدخل الرابط هنا..." placeholderTextColor={colors.mutedForeground} style={inputStyle} autoCapitalize="none" keyboardType="url" />
                 )}
-                <TextInput value={addContent} onChangeText={setAddContent} placeholder="المحتوى المُسلَّم بعد الدفع (نص أو رابط)" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { minHeight: 60 }]} multiline />
+                {(addContentType === "text") && (
+                  <TextInput value={addContent} onChangeText={setAddContent} placeholder="اكتب النص الذي سيُرسل للمشتري..." placeholderTextColor={colors.mutedForeground} style={[inputStyle, { minHeight: 80, textAlignVertical: "top" }]} multiline />
+                )}
+                {(addContentType === "file" || addContentType === "app") && (
+                  Platform.OS !== "web" ? (
+                    <TouchableOpacity onPress={pickToolFile} disabled={addFileUploading}
+                      style={[styles.uploadFileBtn, { backgroundColor: addContent ? "#14532d" : colors.secondary, borderColor: addContent ? "#22c55e44" : colors.border, opacity: addFileUploading ? 0.5 : 1 }]}>
+                      <Feather name={addFileUploading ? "loader" : addContent ? "check-circle" : "folder"} size={18} color={addContent ? "#22c55e" : colors.primary} />
+                      <Text style={[styles.uploadFileBtnText, { color: addContent ? "#22c55e" : colors.primary }]}>
+                        {addFileUploading ? "جاري الرفع..." : addContent ? "تم الرفع ✓ — اضغط لتغيير الملف" : "اضغط لاختيار ملف من الجهاز"}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TextInput value={addContent} onChangeText={setAddContent} placeholder="رابط الملف / التطبيق" placeholderTextColor={colors.mutedForeground} style={inputStyle} autoCapitalize="none" keyboardType="url" />
+                  )
+                )}
+                {(addContentType === "video") && (
+                  Platform.OS !== "web" ? (
+                    <>
+                      <TouchableOpacity onPress={pickLessonVideo} disabled={addFileUploading}
+                        style={[styles.uploadFileBtn, { backgroundColor: addContent ? "#14532d" : colors.secondary, borderColor: addContent ? "#22c55e44" : colors.border, opacity: addFileUploading ? 0.5 : 1 }]}>
+                        <Feather name={addFileUploading ? "loader" : addContent ? "check-circle" : "video"} size={18} color={addContent ? "#22c55e" : colors.primary} />
+                        <Text style={[styles.uploadFileBtnText, { color: addContent ? "#22c55e" : colors.primary }]}>
+                          {addFileUploading ? "جاري الرفع..." : addContent ? "تم رفع الفيديو ✓ — اضغط لتغييره" : "اضغط لاختيار فيديو من الجهاز"}
+                        </Text>
+                      </TouchableOpacity>
+                      {addVideoUrl ? null : <TextInput value={addContent} onChangeText={setAddContent} placeholder="أو أدخل رابط الفيديو مباشرة" placeholderTextColor={colors.mutedForeground} style={inputStyle} autoCapitalize="none" keyboardType="url" />}
+                    </>
+                  ) : (
+                    <TextInput value={addContent} onChangeText={setAddContent} placeholder="رابط الفيديو" placeholderTextColor={colors.mutedForeground} style={inputStyle} autoCapitalize="none" keyboardType="url" />
+                  )
+                )}
+
+                {/* Active toggle */}
                 <TouchableOpacity onPress={() => setAddIsActive((v) => !v)} style={[styles.switchRow, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
                   <Text style={[styles.switchText, { color: colors.foreground }]}>{addIsActive ? (tab === "lessons" ? "منشور" : "نشط") : (tab === "lessons" ? "مسودة" : "غير نشط")}</Text>
                   <Feather name={addIsActive ? "toggle-right" : "toggle-left"} size={24} color={addIsActive ? colors.primary : colors.mutedForeground} />
