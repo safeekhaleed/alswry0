@@ -215,7 +215,7 @@ function StatCard({ icon, label, value, color }: { icon: React.ComponentProps<ty
   const colors = useColors();
   return (
     <GoldenFrame radius={14} style={{ flex: 1 }}>
-      <View style={[styles.statCard, { backgroundColor: color + "10" }]}>
+      <View style={[styles.statCard, { backgroundColor: color + "10", borderWidth: 0 }]}>
         <View style={[styles.statCardBottomGlow, { backgroundColor: color + "18" }]} />
         <Feather name={icon} size={20} color={color} />
         <Text style={[styles.statCardValue, { color: color }]}>{value ?? "—"}</Text>
