@@ -154,9 +154,13 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <GestureHandlerRootView>
-              <KeyboardProvider>
+              {Platform.OS === "web" ? (
                 <RootLayoutNav />
-              </KeyboardProvider>
+              ) : (
+                <KeyboardProvider>
+                  <RootLayoutNav />
+                </KeyboardProvider>
+              )}
             </GestureHandlerRootView>
           </AuthProvider>
         </QueryClientProvider>

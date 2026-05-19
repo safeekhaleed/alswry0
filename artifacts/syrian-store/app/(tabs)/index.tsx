@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useFocusEffect } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -422,7 +421,7 @@ export default function HomeScreen() {
             </Text>
           </View>
         ) : (
-          <LinearGradient colors={["#1e0850", "#0d0028"]} style={styles.welcomeBanner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <View style={[styles.welcomeBanner, { backgroundColor: "#1e0850" }]}>
             <View style={styles.bannerDecorCircle1} />
             <View style={styles.bannerDecorCircle2} />
             <View style={styles.bannerDots}>
@@ -442,7 +441,7 @@ export default function HomeScreen() {
             <Text style={[styles.bannerUsername, { color: colors.primary }]}>
               {user?.username ? `مرحباً، ${user.username}` : "مرحباً بك في المنصة"}
             </Text>
-          </LinearGradient>
+          </View>
         )}
 
         <View style={styles.section}>

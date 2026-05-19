@@ -1,3 +1,4 @@
+"use no memo";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing, Platform, StyleSheet, View, ViewStyle } from "react-native";
