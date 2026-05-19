@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -12,9 +12,10 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useGetTool } from "@workspace/api-client-react";
 
 import { useColors } from "@/hooks/useColors";
+
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
 export default function ToolDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,7 +25,19 @@ export default function ToolDetailScreen() {
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
 
-  const { data: tool, isLoading, isError } = useGetTool(Number(id));
+  const [tool, setTool] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    setIsLoading(true);
+    fetch(`${API_BASE}/api/tools/${id}`)
+      .then(r => { if (r.ok) return r.json(); throw new Error(); })
+      .then(setTool)
+      .catch(() => setIsError(true))
+      .finally(() => setIsLoading(false));
+  }, [id]);
 
   const hasUrl =
     tool?.url &&

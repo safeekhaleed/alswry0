@@ -12,15 +12,8 @@ import { I18nManager, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { setBaseUrl } from "@workspace/api-client-react";
-
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-
-const _domain = process.env.EXPO_PUBLIC_DOMAIN;
-if (_domain) {
-  setBaseUrl(`https://${_domain}`);
-}
 
 if (Platform.OS !== "web") {
   import("expo-notifications").then((Notifications) => {

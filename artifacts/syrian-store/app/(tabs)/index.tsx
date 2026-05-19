@@ -228,7 +228,7 @@ export default function HomeScreen() {
 
   const [stats, setStats] = React.useState<any>(null);
   const [allTools, setAllTools] = React.useState<Tool[]>([]);
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, token } = useAuth();
 
   const apiDomain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
   const apiBase2 = apiDomain ? `https://${apiDomain}` : "";
@@ -261,7 +261,8 @@ export default function HomeScreen() {
     try {
       const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
       const base = domain ? `https://${domain}` : "";
-      const res = await fetch(`${base}/api/notifications/unread-count`, { credentials: "include" });
+      const authHdr = token ? { "Authorization": `Bearer ${token}` } : {};
+      const res = await fetch(`${base}/api/notifications/unread-count`, { headers: authHdr });
       if (res.ok) {
         const { count } = await res.json() as { count: number };
         setUnreadCount(count);
@@ -336,8 +337,10 @@ export default function HomeScreen() {
     try {
       const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
       const apiBase = domain ? `https://${domain}` : "";
-      await fetch(`${apiBase}/api/recharge-requests`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+      const authHdr2 = token ? { "Authorization": `Bearer ${token}` } : {};
+      await fetch(`${apiBase}/api/recharge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHdr2 },
         body: JSON.stringify({ paymentMethod: selectedOption?.label ?? paymentMethod, transactionId: transactionId.trim(), transferImageUrl: transferImage.trim(), amount: selectedAmount }),
       });
       Alert.alert("تم الإرسال ✓", "سيتم مراجعة طلب الشحن من قبل الإدارة وإشعارك قريباً.");

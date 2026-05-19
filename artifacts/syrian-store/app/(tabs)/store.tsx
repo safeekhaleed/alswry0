@@ -14,22 +14,56 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useListServices } from "@workspace/api-client-react";
-import type { Service } from "@workspace/api-client-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+
+type Service = {
+  id: number;
+  title: string;
+  description?: string | null;
+  category: string;
+  price: number;
+  url?: string | null;
+  iconUrl?: string | null;
+  imageUrl?: string | null;
+  content?: string | null;
+  contentType?: string | null;
+  isAvailable: boolean;
+  createdAt: string;
+};
 
 const API_BASE = (() => {
   const d = process.env.EXPO_PUBLIC_DOMAIN ?? "";
   return d ? `https://${d}` : "";
 })();
 
-async function purchaseService(serviceId: number, note: string) {
+function useListServices() {
+  const [data, setData] = useState<Service[] | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+
+  const refetch = async () => {
+    setIsLoading(true);
+    setIsError(false);
+    try {
+      const res = await fetch(`${API_BASE}/api/services`);
+      if (res.ok) setData(await res.json());
+      else setIsError(true);
+    } catch { setIsError(true); }
+    finally { setIsLoading(false); }
+  };
+
+  React.useEffect(() => { refetch(); }, []);
+  return { data, isLoading, isError, refetch };
+}
+
+async function purchaseService(serviceId: number, note: string, token?: string | null) {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${API_BASE}/api/services/${serviceId}/purchase`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
+    headers,
     body: JSON.stringify({ note }),
   });
   const json = await res.json();
@@ -83,7 +117,7 @@ function ServiceOrderModal({
   onPurchased: (result: PurchaseResult) => void;
 }) {
   const colors = useColors();
-  const { user, refreshUser } = useAuth() as any;
+  const { user, refreshUser, token } = useAuth() as any;
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<PurchaseResult | null>(null);
@@ -102,7 +136,7 @@ function ServiceOrderModal({
     if (!service) return;
     setSending(true);
     try {
-      const res = await purchaseService(service.id, note);
+      const res = await purchaseService(service.id, note, token);
       await refreshUser?.();
       setResult(res);
       onPurchased(res);

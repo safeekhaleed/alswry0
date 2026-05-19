@@ -75,8 +75,17 @@ export default function AdminScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
-  const { logout, isAdmin, isLoading: authLoading } = useAuth();
+  const { logout, isAdmin, isLoading: authLoading, token } = useAuth();
   const apiBase = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+
+  const apiFetch = React.useCallback((url: string, opts: RequestInit = {}) => {
+    const hdrs: Record<string, string> = {
+      ...(opts.headers as Record<string, string> ?? {}),
+    };
+    if (!hdrs["Content-Type"] && opts.body) hdrs["Content-Type"] = "application/json";
+    if (token) hdrs["Authorization"] = `Bearer ${token}`;
+    return fetch(url, { ...opts, headers: hdrs });
+  }, [token]);
 
   const [tab, setTab] = useState<TabKey>("overview");
   const [refreshing, setRefreshing] = useState(false);
@@ -155,26 +164,26 @@ export default function AdminScreen() {
   const [services, setServices] = useState<any[] | undefined>(undefined);
 
   const refetchStats = async () => {
-    try { const r = await fetch(`${apiBase}/api/stats`, { credentials: "include" }); if (r.ok) setStats(await r.json()); } catch { }
+    try { const r = await apiFetch(`${apiBase}/api/stats`); if (r.ok) setStats(await r.json()); } catch { }
   };
   const refetchUsers = async () => {
-    try { const r = await fetch(`${apiBase}/api/users`, { credentials: "include" }); if (r.ok) setUsers(await r.json()); } catch { }
+    try { const r = await apiFetch(`${apiBase}/api/users`); if (r.ok) setUsers(await r.json()); } catch { }
   };
   const refetchTools = async () => {
-    try { const r = await fetch(`${apiBase}/api/tools`, { credentials: "include" }); if (r.ok) setTools(await r.json()); } catch { }
+    try { const r = await apiFetch(`${apiBase}/api/tools`); if (r.ok) setTools(await r.json()); } catch { }
   };
   const refetchLessons = async () => {
-    try { const r = await fetch(`${apiBase}/api/admin/lessons`, { credentials: "include" }); if (r.ok) setLessons(await r.json()); } catch { }
+    try { const r = await apiFetch(`${apiBase}/api/lessons`); if (r.ok) setLessons(await r.json()); } catch { }
   };
   const refetchServices = async () => {
-    try { const r = await fetch(`${apiBase}/api/admin/services`, { credentials: "include" }); if (r.ok) setServices(await r.json()); } catch { }
+    try { const r = await apiFetch(`${apiBase}/api/services`); if (r.ok) setServices(await r.json()); } catch { }
   };
 
   useEffect(() => { refetchStats(); refetchUsers(); refetchTools(); refetchLessons(); refetchServices(); }, []);
 
   const makeDel = (endpoint: string) => ({
     mutate: (args: { id: number }, opts: { onSuccess: () => void }) => {
-      fetch(`${apiBase}/api/${endpoint}/${args.id}`, { method: "DELETE", credentials: "include" }).then(() => opts.onSuccess());
+      apiFetch(`${apiBase}/api/${endpoint}/${args.id}`, { method: "DELETE" }).then(() => opts.onSuccess());
     }
   });
   const deleteUser = makeDel("users");
@@ -185,7 +194,7 @@ export default function AdminScreen() {
   const fetchBanners = async () => {
     setBannersLoading(true);
     try {
-      const res = await fetch(`${apiBase}/api/banners/all`, { credentials: "include" });
+      const res = await apiFetch(`${apiBase}/api/banners/all`);
       if (res.ok) setBanners(await res.json());
     } finally { setBannersLoading(false); }
   };
@@ -194,7 +203,7 @@ export default function AdminScreen() {
   const fetchRechargeRequests = async () => {
     setRechargeLoading(true);
     try {
-      const res = await fetch(`${apiBase}/api/recharge-requests`, { credentials: "include" });
+      const res = await apiFetch(`${apiBase}/api/recharge`);
       if (res.ok) setRechargeRequests(await res.json());
     } catch { } finally { setRechargeLoading(false); }
   };
@@ -203,15 +212,15 @@ export default function AdminScreen() {
   const fetchSentLog = async () => {
     setSentLogLoading(true);
     try {
-      const res = await fetch(`${apiBase}/api/notifications/admin/log`, { credentials: "include" });
+      const res = await apiFetch(`${apiBase}/api/notifications/log`);
       if (res.ok) setSentLog(await res.json());
     } catch { } finally { setSentLogLoading(false); }
   };
   useEffect(() => { if (tab === "notifications") fetchSentLog(); }, [tab]);
 
   const handleRechargeStatus = async (id: number, status: "approved" | "rejected") => {
-    const res = await fetch(`${apiBase}/api/recharge-requests/${id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+    const res = await apiFetch(`${apiBase}/api/recharge/${id}`, {
+      method: "PATCH",
       body: JSON.stringify({ status }),
     });
     if (res.ok) fetchRechargeRequests();
@@ -236,7 +245,7 @@ export default function AdminScreen() {
     const asset = result.assets[0];
     setCardImageUploading(true);
     try {
-      const res = await fetch(`${apiBase}/api/upload`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ base64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg" }) });
+      const res = await apiFetch(`${apiBase}/api/upload`, { method: "POST", body: JSON.stringify({ base64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg" }) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "خطأ في الرفع");
       setter(json.url);
@@ -253,7 +262,7 @@ export default function AdminScreen() {
     const asset = result.assets[0];
     setBannerUploading(true);
     try {
-      const res = await fetch(`${apiBase}/api/upload`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ base64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg" }) });
+      const res = await apiFetch(`${apiBase}/api/upload`, { method: "POST", body: JSON.stringify({ base64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg" }) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "خطأ في الرفع");
       setBannerImageUrl(json.url);
@@ -270,7 +279,7 @@ export default function AdminScreen() {
       setAddFileUploading(true);
       const FileSystem = await import("expo-file-system/legacy");
       const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: "base64" });
-      const res = await fetch(`${apiBase}/api/upload`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ base64, mimeType: asset.mimeType ?? "application/octet-stream" }) });
+      const res = await apiFetch(`${apiBase}/api/upload`, { method: "POST", body: JSON.stringify({ base64, mimeType: asset.mimeType ?? "application/octet-stream" }) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "خطأ في الرفع");
       setAddContent(json.url);
@@ -291,7 +300,7 @@ export default function AdminScreen() {
       setAddFileUploading(true);
       const FileSystem = await import("expo-file-system/legacy");
       const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: "base64" });
-      const res = await fetch(`${apiBase}/api/upload`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ base64, mimeType: asset.mimeType ?? "video/mp4" }) });
+      const res = await apiFetch(`${apiBase}/api/upload`, { method: "POST", body: JSON.stringify({ base64, mimeType: asset.mimeType ?? "video/mp4" }) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       setAddVideoUrl(json.url);
@@ -303,7 +312,7 @@ export default function AdminScreen() {
   const saveBanner = async () => {
     if (!bannerImageUrl.trim()) { Alert.alert("مطلوب", "أدخل رابط الصورة"); return; }
     try {
-      const res = await fetch(`${apiBase}/api/banners`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ imageUrl: bannerImageUrl, title: bannerTitle || null, linkUrl: bannerLinkUrl || null, sortOrder: Number(bannerOrder || 0) }) });
+      const res = await apiFetch(`${apiBase}/api/banners`, { method: "POST", body: JSON.stringify({ imageUrl: bannerImageUrl, title: bannerTitle || null, linkUrl: bannerLinkUrl || null, sortOrder: Number(bannerOrder || 0) }) });
       if (!res.ok) { Alert.alert("خطأ", "فشل الإضافة"); return; }
       await fetchBanners();
       setShowAddBanner(false);
@@ -314,12 +323,12 @@ export default function AdminScreen() {
   const deleteBanner = (id: number) => {
     Alert.alert("تأكيد الحذف", "هل تريد حذف هذا البانر؟", [
       { text: "إلغاء", style: "cancel" },
-      { text: "حذف", style: "destructive", onPress: async () => { await fetch(`${apiBase}/api/banners/${id}`, { method: "DELETE", credentials: "include" }); await fetchBanners(); } },
+      { text: "حذف", style: "destructive", onPress: async () => { await apiFetch(`${apiBase}/api/banners/${id}`, { method: "DELETE" }); await fetchBanners(); } },
     ]);
   };
 
   const toggleBannerActive = async (id: number, current: boolean) => {
-    await fetch(`${apiBase}/api/banners/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ isActive: !current }) });
+    await apiFetch(`${apiBase}/api/banners/${id}`, { method: "PATCH", body: JSON.stringify({ isActive: !current }) });
     await fetchBanners();
   };
 
@@ -335,10 +344,10 @@ export default function AdminScreen() {
       const added = Number(chargeAmount);
       if (isNaN(added) || added <= 0) { Alert.alert("خطأ", "أدخل مبلغاً صحيحاً"); return; }
       const newBalance = current + added;
-      const res = await fetch(`${apiBase}/api/users/${chargeUserId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ balance: newBalance }) });
+      const res = await apiFetch(`${apiBase}/api/users/${chargeUserId}`, { method: "PATCH", body: JSON.stringify({ balance: newBalance }) });
       if (!res.ok) { Alert.alert("خطأ", "فشل شحن الرصيد"); return; }
       if (chargeNote.trim()) {
-        await fetch(`${apiBase}/api/notifications/user/${chargeUserId}`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ title: "تم شحن رصيدك ✅", message: chargeNote.trim() || `تمت إضافة ${added} إلى رصيدك. الرصيد الحالي: ${newBalance}`, type: "recharge_approved" }) });
+        await apiFetch(`${apiBase}/api/notifications/send`, { method: "POST", body: JSON.stringify({ title: "تم شحن رصيدك ✅", message: chargeNote.trim() || `تمت إضافة ${added} إلى رصيدك. الرصيد الحالي: ${newBalance}`, type: "recharge_approved", targetUserId: chargeUserId }) });
       }
       await Promise.all([refetchUsers(), refetchStats()]);
       setShowCharge(false);
@@ -354,10 +363,10 @@ export default function AdminScreen() {
     if (!notifyTitle.trim()) { Alert.alert("مطلوب", "أدخل عنوان الإشعار"); return; }
     try {
       if (notifyUserId) {
-        const res = await fetch(`${apiBase}/api/notifications/user/${notifyUserId}`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ title: notifyTitle, message: notifyBody, type: "admin_message" }) });
+        const res = await apiFetch(`${apiBase}/api/notifications/send`, { method: "POST", body: JSON.stringify({ title: notifyTitle, message: notifyBody, type: "admin_message", targetUserId: notifyUserId }) });
         if (!res.ok) { Alert.alert("خطأ", "فشل الإرسال"); return; }
       } else {
-        const res = await fetch(`${apiBase}/api/notifications/broadcast`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ title: notifyTitle, message: notifyBody, type: "app_update" }) });
+        const res = await apiFetch(`${apiBase}/api/notifications/send`, { method: "POST", body: JSON.stringify({ title: notifyTitle, message: notifyBody, type: "app_update" }) });
         if (!res.ok) { Alert.alert("خطأ", "فشل الإرسال الجماعي"); return; }
       }
       setShowNotify(false); fetchSentLog();
@@ -421,7 +430,7 @@ export default function AdminScreen() {
           ? { title, description, category, color: color || "#d4a017", url: url || null, iconUrl: iconUrl || null, imageUrl: imageUrl || null, content: content || null, contentType: editContentType || null, isActive: flag }
           : { title, description, category, price: Number(price || 0), url: url || null, iconUrl: iconUrl || null, imageUrl: imageUrl || null, content: content || null, contentType: editContentType || null, isAvailable: flag };
     const endpoint = edit.type === "user" ? "users" : edit.type === "lesson" ? "lessons" : edit.type === "tool" ? "tools" : "services";
-    const res = await fetch(`${apiBase}/api/${endpoint}/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(body) });
+    const res = await apiFetch(`${apiBase}/api/${endpoint}/${id}`, { method: "PATCH", body: JSON.stringify(body) });
     if (!res.ok) { Alert.alert("خطأ", "فشل التحديث"); return; }
     await Promise.all([refetchStats(), refetchUsers(), refetchLessons(), refetchTools(), refetchServices()]);
     closeEdit();
@@ -437,15 +446,15 @@ export default function AdminScreen() {
     if (tab !== "banners" && !addTitle.trim()) { Alert.alert("مطلوب", "أدخل اسم المنتج"); return; }
     try {
       if (tab === "tools") {
-        const res = await fetch(`${apiBase}/api/tools`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ title: addTitle, description: addDescription || " ", category: addCategory || "عام", color: addColor || "#d4a017", url: addUrl || null, imageUrl: addImageUrl || null, content: addContent || null, contentType: addContentType || null, isActive: addIsActive }) });
+        const res = await apiFetch(`${apiBase}/api/tools`, { method: "POST", body: JSON.stringify({ title: addTitle, description: addDescription || " ", category: addCategory || "عام", color: addColor || "#d4a017", url: addUrl || null, imageUrl: addImageUrl || null, content: addContent || null, contentType: addContentType || null, isActive: addIsActive }) });
         if (!res.ok) { Alert.alert("خطأ", "فشل الإضافة"); return; }
         await refetchTools();
       } else if (tab === "services") {
-        const res = await fetch(`${apiBase}/api/services`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ title: addTitle, description: addDescription || " ", category: addCategory || "عام", price: Number(addPrice || 0), url: addUrl || null, imageUrl: addImageUrl || null, content: addContent || null, contentType: addContentType || null, isAvailable: addIsActive }) });
+        const res = await apiFetch(`${apiBase}/api/services`, { method: "POST", body: JSON.stringify({ title: addTitle, description: addDescription || " ", category: addCategory || "عام", price: Number(addPrice || 0), url: addUrl || null, imageUrl: addImageUrl || null, content: addContent || null, contentType: addContentType || null, isAvailable: addIsActive }) });
         if (!res.ok) { Alert.alert("خطأ", "فشل الإضافة"); return; }
         await refetchServices();
       } else if (tab === "lessons") {
-        const res = await fetch(`${apiBase}/api/lessons`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ title: addTitle, description: addDescription || " ", category: addCategory || "عام", duration: Number(addDuration || 0), videoUrl: addVideoUrl || null, imageUrl: addImageUrl || null, content: addContent || null, contentType: addContentType || null, isPublished: addIsActive }) });
+        const res = await apiFetch(`${apiBase}/api/lessons`, { method: "POST", body: JSON.stringify({ title: addTitle, description: addDescription || " ", category: addCategory || "عام", duration: Number(addDuration || 0), videoUrl: addVideoUrl || null, imageUrl: addImageUrl || null, content: addContent || null, contentType: addContentType || null, isPublished: addIsActive }) });
         if (!res.ok) { Alert.alert("خطأ", "فشل الإضافة"); return; }
         await refetchLessons();
       }
@@ -568,7 +577,7 @@ export default function AdminScreen() {
               <TouchableOpacity onPress={async () => {
                 if (!notifyTitle.trim()) { Alert.alert("مطلوب", "أدخل عنوان الإشعار"); return; }
                 try {
-                  const res = await fetch(`${apiBase}/api/notifications/broadcast`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ title: notifyTitle, message: notifyBody, type: "app_update" }) });
+                  const res = await apiFetch(`${apiBase}/api/notifications/send`, { method: "POST", body: JSON.stringify({ title: notifyTitle, message: notifyBody, type: "app_update" }) });
                   if (!res.ok) { Alert.alert("خطأ", "فشل الإرسال الجماعي"); return; }
                   const json = await res.json();
                   setNotifyTitle(""); setNotifyBody(""); fetchSentLog();

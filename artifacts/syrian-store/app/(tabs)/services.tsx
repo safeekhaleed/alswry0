@@ -12,10 +12,45 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useListServices } from "@workspace/api-client-react";
-import type { Service } from "@workspace/api-client-react";
 
 import { useColors } from "@/hooks/useColors";
+
+type Service = {
+  id: number;
+  title: string;
+  description?: string | null;
+  category: string;
+  price: number;
+  url?: string | null;
+  iconUrl?: string | null;
+  imageUrl?: string | null;
+  content?: string | null;
+  contentType?: string | null;
+  isAvailable: boolean;
+  createdAt: string;
+};
+
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+
+function useListServices() {
+  const [data, setData] = useState<Service[] | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+
+  const refetch = async () => {
+    setIsLoading(true);
+    setIsError(false);
+    try {
+      const res = await fetch(`${API_BASE}/api/services`);
+      if (res.ok) setData(await res.json());
+      else setIsError(true);
+    } catch { setIsError(true); }
+    finally { setIsLoading(false); }
+  };
+
+  useEffect(() => { refetch(); }, []);
+  return { data, isLoading, isError, refetch };
+}
 
 function ServiceCard({ service }: { service: Service }) {
   const colors = useColors();

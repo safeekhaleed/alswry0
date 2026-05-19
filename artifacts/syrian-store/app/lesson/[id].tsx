@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -13,9 +13,10 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useGetLesson } from "@workspace/api-client-react";
 
 import { useColors } from "@/hooks/useColors";
+
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
 function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes} دقيقة`;
@@ -50,7 +51,19 @@ export default function LessonDetailScreen() {
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
 
-  const { data: lesson, isLoading, isError } = useGetLesson(Number(id));
+  const [lesson, setLesson] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    setIsLoading(true);
+    fetch(`${API_BASE}/api/lessons/${id}`)
+      .then(r => { if (r.ok) return r.json(); throw new Error(); })
+      .then(setLesson)
+      .catch(() => setIsError(true))
+      .finally(() => setIsLoading(false));
+  }, [id]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

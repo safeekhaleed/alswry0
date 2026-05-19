@@ -13,10 +13,44 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useListLessons } from "@workspace/api-client-react";
-import type { Lesson } from "@workspace/api-client-react";
 
 import { useColors } from "@/hooks/useColors";
+
+type Lesson = {
+  id: number;
+  title: string;
+  description?: string | null;
+  category: string;
+  duration: number;
+  videoUrl?: string | null;
+  imageUrl?: string | null;
+  content?: string | null;
+  contentType?: string | null;
+  isPublished: boolean;
+  createdAt: string;
+};
+
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+
+function useListLessons() {
+  const [data, setData] = React.useState<Lesson[] | undefined>(undefined);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isError, setIsError] = React.useState(false);
+
+  const refetch = async () => {
+    setIsLoading(true);
+    setIsError(false);
+    try {
+      const res = await fetch(`${API_BASE}/api/lessons`);
+      if (res.ok) setData(await res.json());
+      else setIsError(true);
+    } catch { setIsError(true); }
+    finally { setIsLoading(false); }
+  };
+
+  React.useEffect(() => { refetch(); }, []);
+  return { data, isLoading, isError, refetch };
+}
 
 function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes} د`;
