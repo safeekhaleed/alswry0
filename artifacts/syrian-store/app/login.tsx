@@ -61,11 +61,14 @@ export default function LoginScreen() {
       }
       router.replace("/(tabs)");
     } catch (err: unknown) {
-      const message =
-        err && typeof err === "object" && "data" in err
-          ? (err as { data?: { error?: string } }).data?.error
-          : null;
-      setError(message ?? "حدث خطأ، يرجى المحاولة مجدداً");
+      if (err && typeof err === "object" && "data" in err) {
+        const apiErr = (err as { data?: { error?: string } }).data?.error;
+        setError(apiErr ?? "بيانات الدخول غير صحيحة");
+      } else if (err instanceof TypeError) {
+        setError("تعذّر الاتصال بالخادم — تأكد من اتصالك بالإنترنت");
+      } else {
+        setError("حدث خطأ، يرجى المحاولة مجدداً");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -185,7 +188,7 @@ export default function LoginScreen() {
             {isLoading ? (
               <ActivityIndicator color={colors.primaryForeground} />
             ) : (
-              <Text style={[styles.submitBtnText, { color: colors.primaryForeground }]}>دخول</Text>
+              <Text style={[styles.submitBtnText, { color: colors.primaryForeground }]}>{mode === "register" ? "إنشاء حساب" : "دخول"}</Text>
             )}
           </TouchableOpacity>
         </View>
