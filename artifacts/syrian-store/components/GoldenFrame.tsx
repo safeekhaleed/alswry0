@@ -1,4 +1,3 @@
-import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing, Platform, StyleSheet, View, ViewStyle } from "react-native";
 
@@ -9,9 +8,27 @@ interface Props {
   style?: ViewStyle;
 }
 
-const GRAD_SIZE = 700;
+// Web: simple static golden border — no LinearGradient, no animation
+function GoldenFrameWeb({ children, radius = 16, borderWidth = 1.5, style }: Props) {
+  return (
+    <View
+      style={[
+        {
+          borderRadius: radius,
+          borderWidth,
+          borderColor: "#d4a017",
+          overflow: "hidden",
+        },
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
+}
 
-export function GoldenFrame({ children, radius = 16, borderWidth = 1.5, style }: Props) {
+// Native: animated rotating golden gradient border
+function GoldenFrameNative({ children, radius = 16, borderWidth = 1.5, style }: Props) {
   const spinRef = useRef(new Animated.Value(0));
 
   useEffect(() => {
@@ -20,7 +37,7 @@ export function GoldenFrame({ children, radius = 16, borderWidth = 1.5, style }:
         toValue: 1,
         duration: 3500,
         easing: Easing.linear,
-        useNativeDriver: Platform.OS !== "web",
+        useNativeDriver: true,
       })
     );
     anim.start();
@@ -31,6 +48,11 @@ export function GoldenFrame({ children, radius = 16, borderWidth = 1.5, style }:
     inputRange: [0, 1],
     outputRange: ["0deg", "360deg"],
   });
+
+  const GRAD_SIZE = 700;
+
+  // Lazy-load LinearGradient only on native to avoid web issues
+  const { LinearGradient } = require("expo-linear-gradient");
 
   return (
     <View style={[{ borderRadius: radius, overflow: "hidden" }, style]}>
@@ -76,4 +98,11 @@ export function GoldenFrame({ children, radius = 16, borderWidth = 1.5, style }:
       </View>
     </View>
   );
+}
+
+export function GoldenFrame(props: Props) {
+  if (Platform.OS === "web") {
+    return <GoldenFrameWeb {...props} />;
+  }
+  return <GoldenFrameNative {...props} />;
 }
