@@ -269,8 +269,8 @@ export default function HomeScreen() {
   const [allTools, setAllTools] = React.useState<Tool[]>([]);
   const { user, isAdmin, token } = useAuth();
 
-  const apiDomain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
-  const apiBase2 = apiDomain ? `https://${apiDomain}` : "";
+  const PROD_API = "https://alsouri-maak-api.onrender.com";
+  const apiBase2 = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : Platform.OS !== "web" ? PROD_API : "";
 
   const refetchStats = React.useCallback(async () => {
     try { const r = await fetch(`${apiBase2}/api/stats`); if (r.ok) setStats(await r.json()); } catch { }
@@ -298,8 +298,7 @@ export default function HomeScreen() {
   const fetchUnreadCount = React.useCallback(async () => {
     if (!user) { setUnreadCount(0); return; }
     try {
-      const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
-      const base = domain ? `https://${domain}` : "";
+      const base = apiBase2;
       const authHdr = token ? { "Authorization": `Bearer ${token}` } : {};
       const res = await fetch(`${base}/api/notifications/unread-count`, { headers: authHdr });
       if (res.ok) {
@@ -319,8 +318,7 @@ export default function HomeScreen() {
 
   const fetchBanners = async () => {
     try {
-      const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
-      const base = domain ? `https://${domain}` : "";
+      const base = apiBase2;
       const res = await fetch(`${base}/api/banners`);
       if (res.ok) setBanners(await res.json());
     } catch { }
@@ -411,10 +409,8 @@ export default function HomeScreen() {
     if (!transferImage.trim()) { Alert.alert("مطلوب", "أرفق صورة التحويل."); return; }
     setSubmitting(true);
     try {
-      const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
-      const apiBase = domain ? `https://${domain}` : "";
       const authHdr2 = token ? { "Authorization": `Bearer ${token}` } : {};
-      await fetch(`${apiBase}/api/recharge`, {
+      await fetch(`${apiBase2}/api/recharge`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHdr2 },
         body: JSON.stringify({ paymentMethod: selectedOption?.label ?? paymentMethod, transactionId: transactionId.trim(), transferImageUrl: transferImage.trim(), amount: selectedAmount }),
